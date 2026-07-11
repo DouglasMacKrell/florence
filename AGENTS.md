@@ -5,8 +5,9 @@ Florence is an elder-care navigation MVP — web-first intake, care-type recomme
 ## Before making changes
 
 1. Read [docs/handoff.md](docs/handoff.md) for product requirements.
-2. Follow local rules in `.cursor/rules/` (gitignored — not in the public repo).
-3. Read [SECURITY.md](SECURITY.md) for data-handling constraints.
+2. Read [docs/README.md](docs/README.md) for architecture, API, and roadmap.
+3. Follow local rules in `.cursor/rules/` (gitignored — not in the public repo).
+4. Read [SECURITY.md](SECURITY.md) for data-handling constraints.
 
 ## Git workflow (no PRs)
 
@@ -45,10 +46,10 @@ Every feature follows **Red → Green → Refactor**:
 
 Do not implement production logic without a preceding failing test. Bug fixes require a regression test first.
 
-## Architecture (planned)
+## Architecture
 
-- **Milestone 1:** React web app (text + browser voice) + FastAPI + Postgres + Ollama
-- **Milestone 2:** Twilio telephony via Pipecat, reusing the same conversation engine
+- **Milestone 1 (current):** React web app (text + browser voice) + FastAPI + Postgres + Ollama — see [docs/architecture.md](docs/architecture.md)
+- **Milestone 2:** Twilio telephony via Pipecat, reusing the same conversation engine — see [docs/roadmap.md](docs/roadmap.md)
 
 ## Security constraints
 
@@ -58,15 +59,17 @@ Do not implement production logic without a preceding failing test. Bug fixes re
 - Redact sensitive fields in logs when `REDACT_LOGS=true`
 - `.cursor/` is local-only and must not be committed
 
-## Key modules (to be built)
+## Key modules
 
-| Module | Purpose |
-|--------|---------|
-| Intake state machine | Deterministic conversation stages |
-| Care-type recommender | Hospice / home care / nursing home guidance |
-| Matching engine | Hard filters + weighted provider scoring |
-| Tool layer | `search_providers`, `submit_referral` (mocked) |
-| Redaction utility | `backend/app/security/redaction.py` |
+| Module | Purpose | Location |
+|--------|---------|----------|
+| Intake state machine | Deterministic conversation stages | `backend/app/agent/state_machine.py` |
+| Care-type recommender | Hospice / home care / nursing home guidance | `backend/app/agent/care_recommender.py` |
+| Matching engine | Hard filters + weighted provider scoring | `backend/app/matching/engine.py` |
+| Conversation service | Turn orchestration, Ollama, persistence | `backend/app/services/conversation.py` |
+| Redaction utility | Log PII masking | `backend/app/security/redaction.py` |
+
+See [docs/conversation-engine.md](docs/conversation-engine.md) and [docs/matching-and-referrals.md](docs/matching-and-referrals.md).
 
 ## Environment
 

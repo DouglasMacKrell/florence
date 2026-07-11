@@ -2,78 +2,73 @@
 
 Florence is a humanistic elder-care navigation agent that guides families through intake, recommends care types, matches providers, and submits referrals.
 
-Hackathon MVP for Arya Health.
+**Hackathon MVP for [Arya Health](docs/portfolio.md)** — Jul 2026.
 
 ## Status
 
-- **Step Zero:** Security foundation — complete
-- **Milestone 1:** Web app (text + browser voice) — not yet started
-- **Milestone 2:** Twilio telephony — not yet started
+| Milestone | Status |
+|-----------|--------|
+| Step Zero — security foundation | Complete |
+| M1 — Web app (text + browser voice) + backend core | Functional ([details](docs/roadmap.md)) |
+| M2 — Twilio telephony | Not started |
 
 ## Documentation
 
-- [Product handoff spec](docs/handoff.md)
-- [Security policy](SECURITY.md)
-- [Agent instructions](AGENTS.md)
+**Start here:** [docs/README.md](docs/README.md)
+
+| Doc | Description |
+|-----|-------------|
+| [Portfolio overview](docs/portfolio.md) | Problem, solution, demo story, tech highlights |
+| [Getting started](docs/getting-started.md) | Install and run locally |
+| [Quick start](docs/quick-start.md) | User + developer local run guide |
+| [Architecture](docs/architecture.md) | System design and data flow |
+| [API reference](docs/api.md) | REST endpoints |
+| [Roadmap](docs/roadmap.md) | What's done and what's next |
+| [Product handoff (full spec)](docs/handoff.md) | Original requirements |
+| [Security policy](SECURITY.md) | Data handling and hooks |
+
+## Quick Start
+
+Run Florence locally:
+
+| Audience | Guide |
+|----------|-------|
+| **Try the demo** | [docs/quick-start.md](docs/quick-start.md#user-quick-start-5-minutes) |
+| **Developers** | [docs/quick-start.md](docs/quick-start.md#developer-quick-start-15-minutes) |
+
+```bash
+./scripts/dev-up.sh          # Postgres + env checks
+# then start backend + frontend (see quick-start guide)
+```
+
+Open http://127.0.0.1:5173
+
+Full details: [docs/quick-start.md](docs/quick-start.md) · [docs/getting-started.md](docs/getting-started.md)
+
+## Stack
+
+- **Frontend:** React, Vite, TypeScript, Web Speech API
+- **Backend:** FastAPI, Pydantic v2, SQLAlchemy 2
+- **Database:** Postgres 16 (Docker)
+- **LLM:** Ollama (`llama3.2:3b`) — local only
+- **Testing:** pytest, ruff, oxlint, gitleaks
 
 ## Git workflow
 
-No PRs — work on **`develop`**, merge to **`main`** at stable milestones.
+Work on **`develop`**, merge to **`main`** at stable milestones. No PRs.
 
 ```bash
-git checkout develop          # daily work branch
-git push origin develop       # frequent pushes
+git checkout develop
+git push origin develop
 
-# Stable step only:
-git checkout main && git merge develop && git push origin main
+# Stable milestone:
+git checkout main && git merge develop && git push origin main && git checkout develop
 ```
 
-## Developer setup
-
-### Prerequisites
-
-- Git
-- [gitleaks](https://github.com/gitleaks/gitleaks), [pre-commit](https://pre-commit.com/), and [ruff](https://docs.astral.sh/ruff/) (for Python linting once backend exists)
-
-  ```bash
-  brew install gitleaks pre-commit ruff
-  ```
-
-### First-time setup
-
-```bash
-# Install commit + push hooks (required)
-pre-commit install
-pre-commit install --hook-type pre-push
-
-# Verify hooks
-pre-commit run --all-files
-./scripts/pre-push-gate.sh
-
-# Environment (when app code is added)
-cp .env.example .env
-# Edit .env with local values — never commit .env
-```
-
-### Hooks
-
-| Hook | Runs | Checks |
-|------|------|--------|
-| **pre-commit** | Every commit | gitleaks (staged), whitespace, YAML, merge conflicts, private keys |
-| **pre-push** | Every push | tests, ruff (backend), frontend lint, full-repo gitleaks |
-
-## Testing (TDD required)
-
-Write failing tests before implementation.
-
-```bash
-./scripts/run-tests.sh
-./scripts/lint.sh
-./scripts/pre-push-gate.sh
-```
-
-See [AGENTS.md](AGENTS.md) for full workflow. Cursor rules live locally in `.cursor/rules/` (gitignored).
+See [docs/development.md](docs/development.md).
 
 ## Security
 
-This is a **public** repository. See [SECURITY.md](SECURITY.md) for data-handling rules, pre-commit hooks, and vulnerability reporting.
+Public repository — no secrets or real PII in commits. User intake processed by **local Ollama only**.
+
+See [SECURITY.md](SECURITY.md).

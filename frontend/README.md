@@ -1,32 +1,37 @@
-# React + TypeScript + Vite
+# Florence Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite + TypeScript chat UI for the Florence elder-care navigation agent.
 
-Currently, two official plugins are available:
+## Documentation
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Full project docs live in the repo root:
 
-## React Compiler
+- [docs/README.md](../docs/README.md) — documentation index
+- [docs/getting-started.md](../docs/getting-started.md) — run locally
+- [docs/api.md](../docs/api.md) — backend API
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local development
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+cp .env.example .env
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Set `VITE_API_BASE_URL` to your backend (default in `.env.example` uses port 8001 when 8000 is occupied).
+
+## Features
+
+- Text chat with Florence
+- Web Speech API voice input and TTS listen button
+- Live intake completion progress
+- Care recommendation panel
+- Provider match cards with select + mock referral
+
+## Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run lint` | oxlint |

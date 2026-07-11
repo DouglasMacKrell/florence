@@ -1,5 +1,7 @@
 # Florence — Product Handoff
 
+> **Note:** This is the original product specification. For current implementation status, architecture, and run instructions, see [README.md](README.md) and [roadmap.md](roadmap.md).
+
 ## 1. Project Summary
 
 Build **Florence**, a humanistic care-navigation agent that acts as a first point of contact for families and individuals seeking elder care.
