@@ -5,8 +5,29 @@ Florence is an elder-care navigation MVP — web-first intake, care-type recomme
 ## Before making changes
 
 1. Read [docs/handoff.md](docs/handoff.md) for product requirements.
-2. Follow all rules in `.cursor/rules/`, especially `security-core.mdc` and `test-driven-development.mdc`.
+2. Follow local rules in `.cursor/rules/` (gitignored — not in the public repo).
 3. Read [SECURITY.md](SECURITY.md) for data-handling constraints.
+
+## Git workflow (no PRs)
+
+| Branch | Use |
+|--------|-----|
+| **`develop`** | Daily work — commit and push frequently |
+| **`main`** | Stable, demo-ready milestones only |
+
+- Commit small, frequent changes to **`develop`**.
+- Merge `develop` → `main` only when a step is stable and hooks pass.
+- Pre-push runs tests, linters, and gitleaks — fix before pushing.
+
+```bash
+git checkout develop
+# ... work ...
+git add -A && git commit -m "feat: ..."
+git push origin develop
+
+# Stable milestone only:
+git checkout main && git merge develop && git push origin main && git checkout develop
+```
 
 ## Test-driven development (required)
 
@@ -17,14 +38,9 @@ Every feature follows **Red → Green → Refactor**:
 3. Refactor with tests still green.
 
 ```bash
-# Run all configured test suites (also runs on pre-commit)
 ./scripts/run-tests.sh
-
-# Backend only (once scaffolded)
-cd backend && pytest
-
-# Frontend only (once scaffolded)
-cd frontend && npm test
+./scripts/lint.sh
+./scripts/pre-push-gate.sh   # full gate before push
 ```
 
 Do not implement production logic without a preceding failing test. Bug fixes require a regression test first.
@@ -40,6 +56,7 @@ Do not implement production logic without a preceding failing test. Bug fixes re
 - Ollama local-only for user intake; no hosted LLM APIs with user data
 - Synthetic data in seeds and tests
 - Redact sensitive fields in logs when `REDACT_LOGS=true`
+- `.cursor/` is local-only and must not be committed
 
 ## Key modules (to be built)
 

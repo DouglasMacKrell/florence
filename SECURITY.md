@@ -24,8 +24,9 @@ User conversations are processed by **Ollama running locally**. Intake data and 
 3. Install pre-commit hooks before your first commit:
 
    ```bash
-   brew install gitleaks pre-commit   # macOS
+   brew install gitleaks pre-commit ruff
    pre-commit install
+   pre-commit install --hook-type pre-push
    pre-commit run --all-files
    ```
 

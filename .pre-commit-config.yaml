@@ -4,21 +4,43 @@ repos:
     hooks:
       - id: gitleaks
         args: [--config, .gitleaks.toml]
+        stages: [pre-commit]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        stages: [pre-commit]
       - id: end-of-file-fixer
+        stages: [pre-commit]
       - id: check-yaml
+        stages: [pre-commit]
       - id: check-added-large-files
         args: [--maxkb=500]
+        stages: [pre-commit]
+      - id: check-merge-conflict
+        stages: [pre-commit]
+      - id: detect-private-key
+        stages: [pre-commit, pre-push]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        stages: [pre-push]
+        files: ^backend/
+      - id: ruff-format
+        stages: [pre-push]
+        files: ^backend/
 
   - repo: local
     hooks:
-      - id: run-tests
-        name: run test suites (TDD gate)
-        entry: scripts/run-tests.sh
+      - id: pre-push-gate
+        name: pre-push quality gate (tests + lint + gitleaks)
+        entry: scripts/pre-push-gate.sh
         language: system
         pass_filenames: false
         always_run: true
+        stages: [pre-push]
+
+default_install_hook_types: [pre-commit, pre-push]

@@ -28,7 +28,8 @@ htmlcov/
 .ruff_cache/
 *.egg-info/
 
-# IDE / OS
+# IDE / OS / Cursor (local AI rules — not committed)
+.cursor/
 .DS_Store
 .idea/
 *.swp

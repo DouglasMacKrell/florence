@@ -8,7 +8,6 @@ description = "Allow placeholder values in committed templates"
 paths = [
   '''\.env\.example$''',
   '''SECURITY\.md$''',
-  '''\.cursor/rules/''',
 ]
 
 [[rules]]

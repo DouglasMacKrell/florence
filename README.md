@@ -16,40 +16,63 @@ Hackathon MVP for Arya Health.
 - [Security policy](SECURITY.md)
 - [Agent instructions](AGENTS.md)
 
+## Git workflow
+
+No PRs — work on **`develop`**, merge to **`main`** at stable milestones.
+
+```bash
+git checkout develop          # daily work branch
+git push origin develop       # frequent pushes
+
+# Stable step only:
+git checkout main && git merge develop && git push origin main
+```
+
 ## Developer setup
 
 ### Prerequisites
 
 - Git
-- [gitleaks](https://github.com/gitleaks/gitleaks) and [pre-commit](https://pre-commit.com/)
+- [gitleaks](https://github.com/gitleaks/gitleaks), [pre-commit](https://pre-commit.com/), and [ruff](https://docs.astral.sh/ruff/) (for Python linting once backend exists)
 
   ```bash
-  brew install gitleaks pre-commit
+  brew install gitleaks pre-commit ruff
   ```
 
 ### First-time setup
 
 ```bash
-# Install git hooks (required before committing)
+# Install commit + push hooks (required)
 pre-commit install
+pre-commit install --hook-type pre-push
 
-# Verify hooks pass
+# Verify hooks
 pre-commit run --all-files
+./scripts/pre-push-gate.sh
 
 # Environment (when app code is added)
 cp .env.example .env
 # Edit .env with local values — never commit .env
 ```
 
+### Hooks
+
+| Hook | Runs | Checks |
+|------|------|--------|
+| **pre-commit** | Every commit | gitleaks (staged), whitespace, YAML, merge conflicts, private keys |
+| **pre-push** | Every push | tests, ruff (backend), frontend lint, full-repo gitleaks |
+
 ## Testing (TDD required)
 
-This project uses **test-driven development**. Write failing tests before implementation.
+Write failing tests before implementation.
 
 ```bash
-./scripts/run-tests.sh   # runs backend pytest and/or frontend vitest when configured
+./scripts/run-tests.sh
+./scripts/lint.sh
+./scripts/pre-push-gate.sh
 ```
 
-Pre-commit hooks run the test gate on every commit once test suites exist. See [AGENTS.md](AGENTS.md) and `.cursor/rules/test-driven-development.mdc`.
+See [AGENTS.md](AGENTS.md) for full workflow. Cursor rules live locally in `.cursor/rules/` (gitignored).
 
 ## Security
 
