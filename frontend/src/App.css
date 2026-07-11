@@ -115,6 +115,22 @@ textarea {
   color: #475569;
 }
 
+.contact-phone {
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.contact-phone a {
+  color: #4338ca;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.contact-phone a:hover {
+  text-decoration: underline;
+}
+
 .header-panel {
   flex: 0 0 auto;
   display: flex;

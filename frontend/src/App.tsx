@@ -22,6 +22,7 @@ import {
   waitForSpeechToFinish,
 } from "./speech";
 import { abortListening, isMicSupported, listenForSpeech, requestMicAccess } from "./mic";
+import { contactPhoneDisplay, contactPhoneTelUri } from "./contact";
 import "./App.css";
 
 const REQUIRED_INTAKE_FIELDS = [
@@ -369,6 +370,10 @@ function App() {
               <h1 className="brand-title">Florence</h1>
               <p className="brand-lead">
                 A compassionate guide for families exploring elder-care options — by text or voice.
+              </p>
+              <p className="contact-phone">
+                Call Florence{" "}
+                <a href={contactPhoneTelUri()}>{contactPhoneDisplay()}</a>
               </p>
             </div>
           </div>

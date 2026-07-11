@@ -147,8 +147,27 @@ Terminal walkthrough (no server required):
 ./scripts/run-demo.sh
 ```
 
+## Telephony (Twilio)
+
+Requires `ENABLE_TELEPHONY=true`, tunnel URLs in `.env`, and `pip install -e '.[telephony]'` in `backend/`.
+
+### `POST /twilio/voice`
+
+Twilio voice webhook. Creates a session + call record, returns TwiML that opens a bidirectional media stream.
+
+### `POST /twilio/status`
+
+Call status callback. Updates the linked call record when Twilio reports `completed`, `failed`, etc.
+
+### `WS /twilio/media`
+
+Twilio Media Streams WebSocket. Runs the Pipecat pipeline (local Whisper STT + Piper TTS) and routes transcripts through the same conversation engine as the web UI.
+
+Setup: [telephony.md](telephony.md)
+
 ## Not yet implemented
 
-- Twilio webhooks (`POST /twilio/voice`, `WS /twilio/media`)
+- Outbound dial-out campaigns
+- Production-grade call recording
 
 See [roadmap.md](roadmap.md).

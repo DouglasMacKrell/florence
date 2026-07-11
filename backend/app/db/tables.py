@@ -32,6 +32,33 @@ class SessionRecord(Base):
     intake: Mapped["IntakeRecordORM | None"] = relationship(
         back_populates="session", uselist=False, cascade="all, delete-orphan"
     )
+    call: Mapped["CallRecord | None"] = relationship(
+        back_populates="session", uselist=False, cascade="all, delete-orphan"
+    )
+
+
+class CallRecord(Base):
+    __tablename__ = "calls"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    twilio_call_sid: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    caller_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="ringing")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    session: Mapped[SessionRecord] = relationship(back_populates="call")
 
 
 class MessageRecord(Base):

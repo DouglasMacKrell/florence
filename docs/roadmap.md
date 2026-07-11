@@ -8,7 +8,7 @@ Last updated: Jul 2026 (Arya Health hackathon)
 |-------|-------|--------|
 | **Step Zero** | Security, hooks, gitignore, docs skeleton | ✅ Complete |
 | **M1 — Web MVP** | React UI, FastAPI, Postgres, Ollama, matching, mock referral | 🟡 Functional, polish remaining |
-| **M2 — Telephony** | Twilio + Pipecat, reuse conversation engine | ⬜ Not started |
+| **M2 — Telephony** | Twilio + Pipecat, reuse conversation engine | 🟡 Scaffold in progress |
 
 ## Step Zero ✅
 
@@ -45,18 +45,20 @@ Last updated: Jul 2026 (Arya Health hackathon)
 - [x] Demo script automation / seeded walkthrough
 - [ ] Alembic migrations (currently `create_all` on startup)
 
-## M2 — Telephony ⬜
+## M2 — Telephony 🟡
 
 From [handoff.md Phase 3](handoff.md#phase-3-twilio-integration):
 
-- [ ] `POST /twilio/voice` webhook
-- [ ] `WS /twilio/media` bidirectional stream
-- [ ] Pipecat pipeline (VAD, STT, TTS)
-- [ ] Link `call_sid` to existing session/intake records
-- [ ] Public WebSocket tunnel (ngrok / Cloudflare)
-- [ ] Graceful disconnect → partial intake saved
+- [x] `POST /twilio/voice` webhook
+- [x] `WS /twilio/media` bidirectional stream
+- [x] Pipecat pipeline (VAD, local Whisper STT, Piper TTS)
+- [x] Link `call_sid` to existing session/intake records
+- [ ] End-to-end demo on a live Twilio number (requires tunnel + credentials)
+- [ ] Graceful disconnect → partial intake saved (basic status callback wired)
 
-**Design constraint:** Reuse `services/conversation.py` — do not fork intake logic for phone.
+**Design constraint:** Reuses `services/conversation.py` — intake logic is not forked for phone.
+
+See [telephony.md](telephony.md).
 
 ## Definition of done (hackathon)
 
@@ -70,7 +72,7 @@ From [handoff.md §27](handoff.md#27-definition-of-done-for-the-hackathon):
 | 1–3 provider cards with explanations | ✅ |
 | User selects provider + mock referral | ✅ |
 | Safety scenario routes correctly | ✅ (phrase detection; UI surfacing basic) |
-| Callable Twilio number | ⬜ M2 |
+| Callable Twilio number | 🟡 Scaffold ready |
 | Operator dashboard | ✅ |
 
 ## Promotion criteria (main branch)

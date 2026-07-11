@@ -43,9 +43,13 @@ def generate_assistant_reply(
     history: list[dict[str, str]],
     fallback: str,
     client: OllamaClient | None = None,
+    scripted_only: bool = False,
 ) -> str:
     if intake.safety.possible_emergency or intake.safety.immediate_danger:
         return EMERGENCY_REPLY
+
+    if scripted_only:
+        return fallback
 
     settings = get_settings()
     if not settings.enable_ollama:

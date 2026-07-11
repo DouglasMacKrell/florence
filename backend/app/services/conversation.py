@@ -113,9 +113,15 @@ def get_session(db: Session, session_id: str) -> SessionRecord | None:
     return db.get(SessionRecord, session_id)
 
 
-def process_user_message(db: Session, session_id: str, content: str) -> AssistantTurn:
+def process_user_message(
+    db: Session,
+    session_id: str,
+    content: str,
+    *,
+    scripted_reply: bool = False,
+) -> AssistantTurn:
     prepared = prepare_user_message_turn(db, session_id, content)
-    reply = _generate_reply(prepared)
+    reply = _generate_reply(prepared, scripted_reply=scripted_reply)
     return complete_user_message_turn(db, prepared, reply)
 
 
@@ -203,7 +209,7 @@ def prepare_user_message_turn(db: Session, session_id: str, content: str) -> Pre
     )
 
 
-def _generate_reply(prepared: PreparedTurn) -> str:
+def _generate_reply(prepared: PreparedTurn, *, scripted_reply: bool = False) -> str:
     if prepared.reply_override:
         return prepared.reply_override
     return generate_assistant_reply(
@@ -211,6 +217,7 @@ def _generate_reply(prepared: PreparedTurn) -> str:
         state=prepared.conversation_state,
         history=prepared.history,
         fallback=prepared.fallback,
+        scripted_only=scripted_reply,
     )
 
 

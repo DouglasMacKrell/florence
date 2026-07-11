@@ -27,6 +27,8 @@ htmlcov/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+*.onnx
+*.onnx.json
 
 # IDE / OS / Cursor (local AI rules — not committed)
 .cursor/
