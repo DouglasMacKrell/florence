@@ -12,6 +12,7 @@ from app.main import app
 @pytest.fixture()
 def client(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    monkeypatch.setenv("ENABLE_OLLAMA", "false")
     clear_settings_cache()
 
     engine = create_engine(

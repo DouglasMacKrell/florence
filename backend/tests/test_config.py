@@ -10,3 +10,9 @@ def test_settings_loads_defaults(monkeypatch) -> None:
     assert settings.ollama_base_url == "http://localhost:11434"
     assert settings.redact_logs is True
     assert "http://localhost:5173" in settings.cors_origins_list
+
+
+def test_settings_enable_ollama_defaults_true(monkeypatch) -> None:
+    monkeypatch.delenv("ENABLE_OLLAMA", raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.enable_ollama is True

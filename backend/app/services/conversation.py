@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.agent.care_recommender import recommend_care_types
 from app.agent.state_machine import ConversationState, advance_state
+from app.config import get_settings
 from app.db.tables import (
     CareRecommendationRecordORM,
     IntakeRecordORM,
@@ -15,7 +16,9 @@ from app.db.tables import (
 from app.matching.engine import match_providers
 from app.models.enums import ConversationState as ConversationStateEnum
 from app.models.intake import IntakeRecord
+from app.services.intake_extraction import extract_with_ollama, extract_with_rules
 from app.services.provider_loader import list_provider_records
+from app.services.response_generation import generate_assistant_reply
 
 
 @dataclass
@@ -111,7 +114,7 @@ def process_user_message(db: Session, session_id: str, content: str) -> Assistan
         intake_orm.current_state = session.current_state
         current_state = ConversationStateEnum.DISCLOSURE_AND_CONSENT
 
-    _apply_simple_extraction(intake, content, current_state)
+    _extract_intake_fields(intake, content, current_state, _message_history(session))
 
     next_state = advance_state(current_state, intake)
     if next_state != current_state:
@@ -121,8 +124,14 @@ def process_user_message(db: Session, session_id: str, content: str) -> Assistan
     intake_orm.structured_json = intake.model_dump()
     intake_orm.completion_percent = intake.completion_percent()
 
-    reply = STATE_PROMPTS.get(
+    fallback = STATE_PROMPTS.get(
         ConversationStateEnum(session.current_state), "Thank you for sharing that."
+    )
+    reply = generate_assistant_reply(
+        intake=intake,
+        state=ConversationStateEnum(session.current_state),
+        history=_message_history(session),
+        fallback=fallback,
     )
     care_recommendation_data = None
     matches_data = None
@@ -175,6 +184,28 @@ def process_user_message(db: Session, session_id: str, content: str) -> Assistan
     )
 
 
+def _message_history(session: SessionRecord) -> list[dict[str, str]]:
+    return [
+        {"role": message.role, "content": message.content}
+        for message in sorted(session.messages, key=lambda item: item.created_at)
+    ]
+
+
+def _extract_intake_fields(
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationStateEnum,
+    history: list[dict[str, str]],
+) -> None:
+    settings = get_settings()
+    if settings.enable_ollama:
+        signals = extract_with_ollama(intake, content, state, history)
+        if signals is not None:
+            extract_with_rules(intake, content, state)
+            return
+    extract_with_rules(intake, content, state)
+
+
 def select_provider(db: Session, session_id: str, provider_id: str) -> dict:
     session = db.get(SessionRecord, session_id)
     if session is None:
@@ -209,61 +240,3 @@ def confirm_referral(db: Session, session_id: str) -> dict:
         "provider_id": referral.provider_id,
         "status": referral.status,
     }
-
-
-def _apply_simple_extraction(
-    intake: IntakeRecord, content: str, state: ConversationStateEnum
-) -> None:
-    lowered = content.lower().strip()
-    if lowered.startswith("yes") or lowered in {"sure", "ok", "okay"}:
-        if state == ConversationStateEnum.DISCLOSURE_AND_CONSENT:
-            intake.consent.consent_to_store_information = True
-        elif state == ConversationStateEnum.CAPTURE_FOLLOWUP_CONSENT:
-            intake.consent.consent_to_share_with_matched_providers = True
-            intake.consent.consent_to_contact = True
-
-    if "@" in content and not intake.caller.email:
-        intake.caller.email = content.strip()
-
-    digits = "".join(ch for ch in content if ch.isdigit())
-    if len(digits) >= 10 and not intake.caller.phone:
-        intake.caller.phone = content.strip()
-
-    if state == ConversationStateEnum.UNDERSTAND_REASON_FOR_CALL and len(content) > 10:
-        intake.care_needs.notes = content.strip()
-
-    if state == ConversationStateEnum.IDENTIFY_CARE_RECIPIENT:
-        for token in content.split():
-            if token.isdigit():
-                intake.care_recipient.age = int(token)
-                break
-
-    if state == ConversationStateEnum.ASSESS_URGENCY_AND_SAFETY:
-        intake.timing.urgency = (
-            "within_30_days" if "soon" in lowered or "30" in lowered else content.strip()
-        )
-
-    if state == ConversationStateEnum.COLLECT_LOCATION_REQUIREMENTS:
-        zip_digits = "".join(ch for ch in content if ch.isdigit())
-        if len(zip_digits) >= 5:
-            intake.location_preferences.postal_code = zip_digits[:5]
-        intake.location_preferences.preferred_city = content.strip()
-
-    if state == ConversationStateEnum.COLLECT_FINANCIAL_REQUIREMENTS:
-        numbers = [int(token) for token in content.replace(",", "").split() if token.isdigit()]
-        if numbers:
-            intake.financial.monthly_budget_max = max(numbers)
-            if len(numbers) > 1:
-                intake.financial.monthly_budget_min = min(numbers)
-
-    if "daughter" in lowered or "son" in lowered:
-        intake.caller.relationship_to_care_recipient = (
-            "daughter" if "daughter" in lowered else "son"
-        )
-
-    if (
-        state == ConversationStateEnum.GREETING
-        and not intake.caller.name
-        and " " in content.strip()
-    ):
-        intake.caller.name = content.strip()

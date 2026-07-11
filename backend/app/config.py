@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     redact_logs: bool = True
     enable_transcript_persistence: bool = True
     transcript_retention_days: int = 7
+    enable_ollama: bool = True
 
     @property
     def cors_origins_list(self) -> list[str]:
