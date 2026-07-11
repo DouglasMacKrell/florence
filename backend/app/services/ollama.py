@@ -1,4 +1,5 @@
 import json
+import time
 from collections.abc import Iterator
 from typing import Any
 
@@ -18,13 +19,28 @@ class OllamaClient:
         base_url: str | None = None,
         model: str | None = None,
         timeout_seconds: float = 60.0,
+        max_retries: int | None = None,
     ) -> None:
         settings = get_settings()
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self.model = model or settings.ollama_model
         self.timeout_seconds = timeout_seconds
+        self.max_retries = settings.ollama_max_retries if max_retries is None else max_retries
 
     def chat(self, messages: list[dict[str, str]], *, json_mode: bool = False) -> str:
+        last_error: OllamaError | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                return self._chat_once(messages, json_mode=json_mode)
+            except OllamaError as exc:
+                last_error = exc
+                if attempt >= self.max_retries:
+                    break
+                time.sleep(0.2 * (attempt + 1))
+        assert last_error is not None
+        raise last_error
+
+    def _chat_once(self, messages: list[dict[str, str]], *, json_mode: bool) -> str:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -79,8 +95,19 @@ class OllamaClient:
         content = self.chat(messages, json_mode=True)
         try:
             parsed = json.loads(content)
-        except json.JSONDecodeError as exc:
-            raise OllamaError("Ollama returned invalid JSON") from exc
+        except json.JSONDecodeError:
+            repair_messages = [
+                *messages,
+                {
+                    "role": "user",
+                    "content": "Your previous response was not valid JSON. Reply with JSON only.",
+                },
+            ]
+            content = self.chat(repair_messages, json_mode=True)
+            try:
+                parsed = json.loads(content)
+            except json.JSONDecodeError as exc:
+                raise OllamaError("Ollama returned invalid JSON") from exc
         if not isinstance(parsed, dict):
             raise OllamaError("Ollama JSON payload must be an object")
         return parsed

@@ -39,11 +39,11 @@ Last updated: Jul 2026 (Arya Health hackathon)
 
 ### Remaining / polish
 
-- [ ] Richer Ollama extraction (smaller model tuning, retry logic)
+- [x] Ollama HTTP/JSON retry for extraction and replies (`OLLAMA_MAX_RETRIES`)
 - [x] Intake progress sidebar (checklist + completion %)
 - [x] Operator dashboard (lead score, referral economics, transcript view)
 - [x] Demo script automation / seeded walkthrough
-- [ ] Alembic migrations (currently `create_all` on startup)
+- [x] Alembic migrations (opt-in via `USE_ALEMBIC=true`; default remains `create_all`)
 
 ## M2 — Telephony 🟡
 

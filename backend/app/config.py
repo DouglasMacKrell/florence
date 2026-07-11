@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     enable_transcript_persistence: bool = True
     transcript_retention_days: int = 7
     enable_ollama: bool = True
+    ollama_max_retries: int = 2
+    use_alembic: bool = False
     enable_telephony: bool = False
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""

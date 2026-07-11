@@ -40,4 +40,10 @@ def get_db_session() -> Generator[Session, None, None]:
 def init_db() -> None:
     from app.db import tables  # noqa: F401
 
+    settings = get_settings()
+    if settings.use_alembic:
+        from app.db.migrate import upgrade_database
+
+        upgrade_database()
+        return
     Base.metadata.create_all(bind=get_engine())
