@@ -36,6 +36,16 @@ ABUSE_PHRASES = (
 def detect_safety_signals(content: str) -> SafetySignals:
     lowered = content.lower()
     possible_emergency = any(phrase in lowered for phrase in EMERGENCY_PHRASES)
+    if "serious injury" in lowered and any(
+        negation in lowered
+        for negation in (
+            "without serious injury",
+            "no serious injury",
+            "not a serious injury",
+            "without a serious injury",
+        )
+    ):
+        possible_emergency = False
     abuse_or_neglect_concern = any(phrase in lowered for phrase in ABUSE_PHRASES)
     human_followup_required = possible_emergency or abuse_or_neglect_concern
     return SafetySignals(

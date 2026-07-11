@@ -177,3 +177,18 @@ export async function confirmReferral(sessionId: string): Promise<void> {
     throw new Error("Failed to confirm referral");
   }
 }
+
+export type DemoScript = {
+  id: string;
+  title: string;
+  description: string;
+  user_messages: string[];
+};
+
+export async function fetchDemoScript(): Promise<DemoScript> {
+  const response = await fetch(`${API_BASE}/demo/script`);
+  if (!response.ok) {
+    throw new Error("Failed to load demo script");
+  }
+  return response.json();
+}

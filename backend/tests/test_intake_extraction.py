@@ -35,6 +35,20 @@ def test_extract_with_rules_captures_consent() -> None:
     assert intake.consent.consent_to_store_information is True
 
 
+def test_extract_with_rules_captures_caller_identity() -> None:
+    intake = IntakeRecord()
+    intake.consent.consent_to_store_information = True
+    extract_with_rules(
+        intake,
+        "My name is Jane Doe. I'm his daughter. Please call me at 555-123-4567.",
+        ConversationState.UNDERSTAND_DECISION_PROCESS,
+    )
+    assert intake.caller.name == "Jane Doe"
+    assert intake.caller.phone == "555-123-4567"
+    assert intake.caller.relationship_to_care_recipient == "daughter"
+    assert intake.consent.consent_to_contact is True
+
+
 def test_extract_with_rules_captures_demo_intake() -> None:
     intake = IntakeRecord()
     demo_message = (

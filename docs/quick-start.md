@@ -54,6 +54,16 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 ### First conversation (demo script)
 
+**Fastest path:** click **Run demo** in the UI header — it replays the Queens daughter scenario automatically.
+
+Or run the terminal walkthrough:
+
+```bash
+./scripts/run-demo.sh
+```
+
+Manual script:
+
 1. Read Florence's greeting → reply **Yes** to storage consent.
 2. Describe a care situation, for example:
 

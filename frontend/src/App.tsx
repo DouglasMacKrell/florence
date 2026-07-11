@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import {
   confirmReferral,
   createSession,
+  fetchDemoScript,
   getSession,
   selectProvider,
   sendMessageStream,
@@ -57,6 +58,7 @@ function App() {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [referralStatus, setReferralStatus] = useState<string | null>(null);
+  const [demoRunning, setDemoRunning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const speechSupported = useMemo(
@@ -95,35 +97,69 @@ function App() {
     setReferralStatus(detail.referral?.status ?? null);
   }
 
+  async function sendUserMessage(content: string) {
+    if (!sessionId) {
+      return;
+    }
+    setMessages((current) => [...current, { role: "user", content }]);
+    setMessages((current) => [...current, { role: "assistant", content: "" }]);
+    const reply = await sendMessageStream(sessionId, content, (token) => {
+      setMessages((current) => {
+        const next = [...current];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant") {
+          next[next.length - 1] = { ...last, content: last.content + token };
+        }
+        return next;
+      });
+    });
+    setMatches(reply.matches ?? []);
+    setCareRecommendation(reply.care_recommendation);
+    await refreshSession(sessionId);
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!sessionId || !input.trim() || loading) {
+    if (!sessionId || !input.trim() || loading || demoRunning) {
       return;
     }
     const content = input.trim();
     setInput("");
-    setMessages((current) => [...current, { role: "user", content }]);
-    setMessages((current) => [...current, { role: "assistant", content: "" }]);
     setLoading(true);
     setError(null);
     try {
-      const reply = await sendMessageStream(sessionId, content, (token) => {
-        setMessages((current) => {
-          const next = [...current];
-          const last = next[next.length - 1];
-          if (last?.role === "assistant") {
-            next[next.length - 1] = { ...last, content: last.content + token };
-          }
-          return next;
-        });
-      });
-      setMatches(reply.matches ?? []);
-      setCareRecommendation(reply.care_recommendation);
-      await refreshSession(sessionId);
+      await sendUserMessage(content);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to send message");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleRunDemo() {
+    if (loading || demoRunning) {
+      return;
+    }
+    setDemoRunning(true);
+    setLoading(true);
+    setError(null);
+    setMatches([]);
+    setCareRecommendation(undefined);
+    setReferralStatus(null);
+    try {
+      const script = await fetchDemoScript();
+      const session = await createSession();
+      setSessionId(session.session_id);
+      setMessages([{ role: "assistant", content: session.greeting }]);
+      for (const message of script.user_messages) {
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+        await sendUserMessage(message);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Demo walkthrough failed");
+    } finally {
+      setLoading(false);
+      setDemoRunning(false);
     }
   }
 
@@ -191,6 +227,14 @@ function App() {
         <div className="progress-card">
           <span>Intake progress</span>
           <strong>{completionPercent}%</strong>
+          <button
+            type="button"
+            className="secondary demo-button"
+            disabled={loading || demoRunning}
+            onClick={() => void handleRunDemo()}
+          >
+            {demoRunning ? "Running demo..." : "Run demo"}
+          </button>
         </div>
       </header>
 
@@ -219,13 +263,13 @@ function App() {
               rows={3}
             />
             <div className="composer-actions">
-              <button type="submit" disabled={loading || !input.trim()}>
+              <button type="submit" disabled={loading || demoRunning || !input.trim()}>
                 {loading ? "Sending..." : "Send"}
               </button>
               <button
                 type="button"
                 className="secondary"
-                disabled={loading || !speechSupported}
+                disabled={loading || demoRunning || !speechSupported}
                 onClick={startVoiceInput}
               >
                 {listening ? "Listening..." : "Voice input"}

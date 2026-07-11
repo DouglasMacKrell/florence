@@ -38,6 +38,7 @@ Run Florence locally:
 
 ```bash
 ./scripts/dev-up.sh          # Postgres + env checks
+./scripts/run-demo.sh        # terminal demo walkthrough (optional)
 # then start backend + frontend (see quick-start guide)
 ```
 

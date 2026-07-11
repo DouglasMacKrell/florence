@@ -16,3 +16,8 @@ def test_routine_intake_is_not_flagged() -> None:
     result = detect_safety_signals("My mother needs help with meals and bathing.")
     assert result.possible_emergency is False
     assert result.abuse_or_neglect_concern is False
+
+
+def test_negated_serious_injury_is_not_emergency() -> None:
+    result = detect_safety_signals("He fell recently without a serious injury.")
+    assert result.possible_emergency is False

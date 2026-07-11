@@ -69,6 +69,11 @@ textarea {
   font-size: 2rem;
 }
 
+.progress-card .demo-button {
+  margin-top: 12px;
+  width: 100%;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);

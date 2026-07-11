@@ -119,6 +119,18 @@ Validate consent and mark referral `mock_complete`. Requires `consent.consent_to
 
 Configured via `CORS_ORIGINS` in `.env`. Default includes both `localhost` and `127.0.0.1` on port 5173.
 
+## Demo
+
+### `GET /demo/script`
+
+Returns the seeded Queens daughter walkthrough (`data/demo_script.json`) for UI replay.
+
+Terminal walkthrough (no server required):
+
+```bash
+./scripts/run-demo.sh
+```
+
 ## Not yet implemented
 
 - Twilio webhooks (`POST /twilio/voice`, `WS /twilio/media`)

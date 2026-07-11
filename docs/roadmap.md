@@ -42,7 +42,7 @@ Last updated: Jul 2026 (Arya Health hackathon)
 - [ ] Richer Ollama extraction (smaller model tuning, retry logic)
 - [ ] Intake progress sidebar (partial — completion % only)
 - [ ] Operator dashboard (lead score, referral economics, transcript view)
-- [ ] Demo script automation / seeded walkthrough
+- [x] Demo script automation / seeded walkthrough
 - [ ] Alembic migrations (currently `create_all` on startup)
 
 ## M2 — Telephony ⬜

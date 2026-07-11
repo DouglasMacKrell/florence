@@ -82,8 +82,21 @@ def _apply_simple_extraction(intake: IntakeRecord, content: str, state: Conversa
         intake.caller.email = content.strip()
 
     digits = "".join(ch for ch in content if ch.isdigit())
-    if len(digits) in {10, 11} and not intake.caller.phone:
+    phone_match = re.search(
+        r"(?:\+1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}",
+        content,
+    )
+    if phone_match and not intake.caller.phone:
+        intake.caller.phone = phone_match.group(0).strip()
+    elif len(digits) in {10, 11} and not intake.caller.phone and len(content.strip()) <= 20:
         intake.caller.phone = content.strip()
+
+    name_match = re.search(r"\bmy name is ([^.,!\n]+)", content, re.IGNORECASE)
+    if name_match and not intake.caller.name:
+        intake.caller.name = name_match.group(1).strip()
+
+    if intake.caller.phone and intake.consent.consent_to_store_information is True:
+        intake.consent.consent_to_contact = True
 
     if state == ConversationState.UNDERSTAND_REASON_FOR_CALL and len(content) > 10:
         intake.care_needs.notes = content.strip()
