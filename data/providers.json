@@ -1,0 +1,519 @@
+[
+  {
+    "id": "provider_001",
+    "name": "Harbor View Senior Living",
+    "provider_type": "assisted_living",
+    "address": {
+      "street": "123 Example Street",
+      "city": "Queens",
+      "state": "NY",
+      "postal_code": "11101",
+      "latitude": 40.744,
+      "longitude": -73.949
+    },
+    "service_area_miles": 15,
+    "care_levels": ["assisted_living", "memory_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "memory_support": true,
+      "two_person_transfer": false,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 5500, "monthly_max": 9000, "entrance_fee": 0},
+    "payment_options": ["private_pay", "long_term_care_insurance"],
+    "languages": ["English", "Spanish"],
+    "amenities": ["transportation", "private_rooms", "pet_friendly"],
+    "referral": {"eligible": true, "estimated_bounty": 12000, "requirements": "Qualified move-in"},
+    "quality": {"rating": 4.4, "review_count": 83, "license_status": "unverified_for_demo"}
+  },
+  {
+    "id": "provider_002",
+    "name": "Queens Memory Care Center",
+    "provider_type": "memory_care",
+    "address": {
+      "street": "45 Memory Lane",
+      "city": "Queens",
+      "state": "NY",
+      "postal_code": "11103",
+      "latitude": 40.762,
+      "longitude": -73.907
+    },
+    "service_area_miles": 12,
+    "care_levels": ["memory_care", "assisted_living"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "memory_support": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 6200, "monthly_max": 9500, "entrance_fee": 0},
+    "payment_options": ["private_pay"],
+    "languages": ["English", "Spanish", "Mandarin"],
+    "amenities": ["transportation", "private_rooms"],
+    "referral": {"eligible": true, "estimated_bounty": 14000},
+    "quality": {"rating": 4.6, "review_count": 54}
+  },
+  {
+    "id": "provider_003",
+    "name": "Astoria Home Care Partners",
+    "provider_type": "home_care",
+    "address": {
+      "street": "88 Steinway Street",
+      "city": "Astoria",
+      "state": "NY",
+      "postal_code": "11105",
+      "latitude": 40.772,
+      "longitude": -73.912
+    },
+    "service_area_miles": 20,
+    "care_levels": ["home_care", "respite_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "mobility": true,
+      "medication_management": true,
+      "memory_support": false,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 4200, "monthly_max": 6800, "entrance_fee": 0},
+    "payment_options": ["private_pay", "medicaid"],
+    "languages": ["English", "Greek", "Spanish"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 3500},
+    "quality": {"rating": 4.2, "review_count": 112}
+  },
+  {
+    "id": "provider_004",
+    "name": "Brooklyn Skilled Nursing Pavilion",
+    "provider_type": "skilled_nursing",
+    "address": {
+      "street": "200 Atlantic Ave",
+      "city": "Brooklyn",
+      "state": "NY",
+      "postal_code": "11201",
+      "latitude": 40.689,
+      "longitude": -73.985
+    },
+    "service_area_miles": 18,
+    "care_levels": ["skilled_nursing"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "memory_support": true,
+      "two_person_transfer": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 9000, "monthly_max": 14000, "entrance_fee": 0},
+    "payment_options": ["private_pay", "medicare", "medicaid"],
+    "languages": ["English", "Russian"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 18000},
+    "quality": {"rating": 4.0, "review_count": 67}
+  },
+  {
+    "id": "provider_005",
+    "name": "Compassion Hospice of NYC",
+    "provider_type": "hospice",
+    "address": {
+      "street": "500 Park Avenue",
+      "city": "Manhattan",
+      "state": "NY",
+      "postal_code": "10022",
+      "latitude": 40.761,
+      "longitude": -73.971
+    },
+    "service_area_miles": 30,
+    "care_levels": ["hospice", "home_care"],
+    "supports": {
+      "bathing": true,
+      "medication_management": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 0, "monthly_max": 0, "entrance_fee": 0},
+    "payment_options": ["medicare", "medicaid", "private_pay"],
+    "languages": ["English", "Spanish"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 8000},
+    "quality": {"rating": 4.8, "review_count": 41}
+  },
+  {
+    "id": "provider_006",
+    "name": "Sunrise Respite Center",
+    "provider_type": "respite_care",
+    "address": {
+      "street": "12 Respite Road",
+      "city": "Flushing",
+      "state": "NY",
+      "postal_code": "11355",
+      "latitude": 40.748,
+      "longitude": -73.825
+    },
+    "service_area_miles": 15,
+    "care_levels": ["respite_care", "home_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "mobility": true,
+      "medication_management": true,
+      "overnight_supervision": false
+    },
+    "pricing": {"monthly_min": 3000, "monthly_max": 5000, "entrance_fee": 0},
+    "payment_options": ["private_pay"],
+    "languages": ["English", "Korean"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": false, "estimated_bounty": 0},
+    "quality": {"rating": 4.1, "review_count": 29}
+  },
+  {
+    "id": "provider_007",
+    "name": "Forest Hills Assisted Living",
+    "provider_type": "assisted_living",
+    "address": {
+      "street": "70 Austin Street",
+      "city": "Forest Hills",
+      "state": "NY",
+      "postal_code": "11375",
+      "latitude": 40.718,
+      "longitude": -73.844
+    },
+    "service_area_miles": 10,
+    "care_levels": ["assisted_living"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 5800, "monthly_max": 8200, "entrance_fee": 1500},
+    "payment_options": ["private_pay", "long_term_care_insurance"],
+    "languages": ["English"],
+    "amenities": ["private_rooms", "transportation", "pet_friendly"],
+    "referral": {"eligible": true, "estimated_bounty": 11000},
+    "quality": {"rating": 4.3, "review_count": 95}
+  },
+  {
+    "id": "provider_008",
+    "name": "Long Island Home Health",
+    "provider_type": "home_care",
+    "address": {
+      "street": "300 Main Street",
+      "city": "Garden City",
+      "state": "NY",
+      "postal_code": "11530",
+      "latitude": 40.726,
+      "longitude": -73.634
+    },
+    "service_area_miles": 25,
+    "care_levels": ["home_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "mobility": true,
+      "medication_management": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 4500, "monthly_max": 7200, "entrance_fee": 0},
+    "payment_options": ["private_pay", "long_term_care_insurance"],
+    "languages": ["English", "Spanish"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 4000},
+    "quality": {"rating": 4.5, "review_count": 88}
+  },
+  {
+    "id": "provider_009",
+    "name": "Bronx Memory Support Residence",
+    "provider_type": "memory_care",
+    "address": {
+      "street": "900 Grand Concourse",
+      "city": "Bronx",
+      "state": "NY",
+      "postal_code": "10451",
+      "latitude": 40.823,
+      "longitude": -73.925
+    },
+    "service_area_miles": 15,
+    "care_levels": ["memory_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "memory_support": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 5000, "monthly_max": 7800, "entrance_fee": 0},
+    "payment_options": ["private_pay", "medicaid"],
+    "languages": ["English", "Spanish"],
+    "amenities": ["private_rooms"],
+    "referral": {"eligible": true, "estimated_bounty": 10000},
+    "quality": {"rating": 3.9, "review_count": 44}
+  },
+  {
+    "id": "provider_010",
+    "name": "Staten Island Skilled Care",
+    "provider_type": "skilled_nursing",
+    "address": {
+      "street": "100 Richmond Terrace",
+      "city": "Staten Island",
+      "state": "NY",
+      "postal_code": "10301",
+      "latitude": 40.643,
+      "longitude": -74.077
+    },
+    "service_area_miles": 20,
+    "care_levels": ["skilled_nursing"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "two_person_transfer": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 8500, "monthly_max": 13000, "entrance_fee": 0},
+    "payment_options": ["medicare", "medicaid", "private_pay"],
+    "languages": ["English", "Italian"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 16000},
+    "quality": {"rating": 4.0, "review_count": 52}
+  },
+  {
+    "id": "provider_011",
+    "name": "Jersey City Assisted Living",
+    "provider_type": "assisted_living",
+    "address": {
+      "street": "25 Hudson Street",
+      "city": "Jersey City",
+      "state": "NJ",
+      "postal_code": "07302",
+      "latitude": 40.717,
+      "longitude": -74.043
+    },
+    "service_area_miles": 12,
+    "care_levels": ["assisted_living", "memory_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "mobility": true,
+      "medication_management": true,
+      "memory_support": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 5200, "monthly_max": 7600, "entrance_fee": 0},
+    "payment_options": ["private_pay"],
+    "languages": ["English", "Spanish", "Hindi"],
+    "amenities": ["private_rooms", "transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 9500},
+    "quality": {"rating": 4.2, "review_count": 73}
+  },
+  {
+    "id": "provider_012",
+    "name": "Westchester Home Care Agency",
+    "provider_type": "home_care",
+    "address": {
+      "street": "15 Main Street",
+      "city": "White Plains",
+      "state": "NY",
+      "postal_code": "10601",
+      "latitude": 41.033,
+      "longitude": -73.762
+    },
+    "service_area_miles": 30,
+    "care_levels": ["home_care", "respite_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "mobility": true,
+      "medication_management": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 4800, "monthly_max": 7500, "entrance_fee": 0},
+    "payment_options": ["private_pay", "long_term_care_insurance"],
+    "languages": ["English", "Spanish"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 4200},
+    "quality": {"rating": 4.4, "review_count": 61}
+  },
+  {
+    "id": "provider_013",
+    "name": "Newark Hospice Services",
+    "provider_type": "hospice",
+    "address": {
+      "street": "50 Broad Street",
+      "city": "Newark",
+      "state": "NJ",
+      "postal_code": "07102",
+      "latitude": 40.735,
+      "longitude": -74.172
+    },
+    "service_area_miles": 25,
+    "care_levels": ["hospice"],
+    "supports": {
+      "bathing": true,
+      "medication_management": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 0, "monthly_max": 0, "entrance_fee": 0},
+    "payment_options": ["medicare", "medicaid"],
+    "languages": ["English", "Portuguese"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 7500},
+    "quality": {"rating": 4.6, "review_count": 38}
+  },
+  {
+    "id": "provider_014",
+    "name": "Upper East Side Memory Care",
+    "provider_type": "memory_care",
+    "address": {
+      "street": "1200 Madison Avenue",
+      "city": "Manhattan",
+      "state": "NY",
+      "postal_code": "10128",
+      "latitude": 40.782,
+      "longitude": -73.956
+    },
+    "service_area_miles": 8,
+    "care_levels": ["memory_care", "assisted_living"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "memory_support": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 9000, "monthly_max": 15000, "entrance_fee": 5000},
+    "payment_options": ["private_pay"],
+    "languages": ["English", "French"],
+    "amenities": ["private_rooms", "transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 20000},
+    "quality": {"rating": 4.7, "review_count": 102}
+  },
+  {
+    "id": "provider_015",
+    "name": "Queens Village Assisted Living",
+    "provider_type": "assisted_living",
+    "address": {
+      "street": "220 Jamaica Avenue",
+      "city": "Queens Village",
+      "state": "NY",
+      "postal_code": "11428",
+      "latitude": 40.728,
+      "longitude": -73.742
+    },
+    "service_area_miles": 12,
+    "care_levels": ["assisted_living"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "mobility": true,
+      "medication_management": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 4800, "monthly_max": 7000, "entrance_fee": 0},
+    "payment_options": ["private_pay", "medicaid"],
+    "languages": ["English", "Haitian Creole"],
+    "amenities": ["transportation", "pet_friendly"],
+    "referral": {"eligible": true, "estimated_bounty": 8500},
+    "quality": {"rating": 4.0, "review_count": 47}
+  },
+  {
+    "id": "provider_016",
+    "name": "Midtown Respite and Recovery",
+    "provider_type": "respite_care",
+    "address": {
+      "street": "350 Fifth Avenue",
+      "city": "Manhattan",
+      "state": "NY",
+      "postal_code": "10118",
+      "latitude": 40.748,
+      "longitude": -73.985
+    },
+    "service_area_miles": 10,
+    "care_levels": ["respite_care", "home_care"],
+    "supports": {
+      "bathing": true,
+      "mobility": true,
+      "medication_management": true
+    },
+    "pricing": {"monthly_min": 3500, "monthly_max": 5500, "entrance_fee": 0},
+    "payment_options": ["private_pay"],
+    "languages": ["English"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": false, "estimated_bounty": 0},
+    "quality": {"rating": 3.8, "review_count": 22}
+  },
+  {
+    "id": "provider_017",
+    "name": "Rockaway Home Health Services",
+    "provider_type": "home_care",
+    "address": {
+      "street": "90 Beach Channel Drive",
+      "city": "Rockaway Beach",
+      "state": "NY",
+      "postal_code": "11693",
+      "latitude": 40.586,
+      "longitude": -73.816
+    },
+    "service_area_miles": 18,
+    "care_levels": ["home_care"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "mobility": true,
+      "medication_management": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 4000, "monthly_max": 6500, "entrance_fee": 0},
+    "payment_options": ["private_pay", "medicaid"],
+    "languages": ["English", "Spanish"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 3800},
+    "quality": {"rating": 4.1, "review_count": 36}
+  },
+  {
+    "id": "provider_018",
+    "name": "Elmhurst Skilled Nursing Center",
+    "provider_type": "skilled_nursing",
+    "address": {
+      "street": "80-01 Broadway",
+      "city": "Elmhurst",
+      "state": "NY",
+      "postal_code": "11373",
+      "latitude": 40.742,
+      "longitude": -73.887
+    },
+    "service_area_miles": 12,
+    "care_levels": ["skilled_nursing"],
+    "supports": {
+      "bathing": true,
+      "dressing": true,
+      "toileting": true,
+      "mobility": true,
+      "medication_management": true,
+      "two_person_transfer": true,
+      "overnight_supervision": true
+    },
+    "pricing": {"monthly_min": 8200, "monthly_max": 12500, "entrance_fee": 0},
+    "payment_options": ["medicare", "medicaid", "private_pay"],
+    "languages": ["English", "Chinese", "Spanish"],
+    "amenities": ["transportation"],
+    "referral": {"eligible": true, "estimated_bounty": 17000},
+    "quality": {"rating": 3.7, "review_count": 58}
+  }
+]

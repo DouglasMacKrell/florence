@@ -1,0 +1,196 @@
+:root {
+  color: #172033;
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 30%),
+    linear-gradient(180deg, #f7f8fc 0%, #eef2ff 100%);
+  font-family: Inter, system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  max-width: 640px;
+  color: #475569;
+}
+
+.progress-card,
+.info-card,
+.message,
+.provider-card {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+.progress-card {
+  min-width: 160px;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.progress-card strong {
+  display: block;
+  font-size: 2rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 20px;
+}
+
+.chat-panel,
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.messages {
+  min-height: 420px;
+  max-height: 62vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px;
+}
+
+.message {
+  padding: 16px;
+}
+
+.message span {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.message.user {
+  align-self: flex-end;
+  max-width: 80%;
+  background: #eef2ff;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.composer textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #cbd5e1;
+  resize: vertical;
+}
+
+.composer-actions,
+.provider-card button,
+.composer button,
+.ghost-button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.composer button,
+.provider-card button {
+  background: #4338ca;
+  color: white;
+}
+
+.composer button.secondary,
+.ghost-button {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.composer-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.info-card {
+  padding: 18px;
+}
+
+.info-card.success {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.pill {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #dbeafe;
+  text-transform: capitalize;
+}
+
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.provider-card {
+  padding: 14px;
+}
+
+.provider-card-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .layout,
+  .hero {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+}
