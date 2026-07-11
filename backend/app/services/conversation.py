@@ -80,6 +80,10 @@ STATE_PROMPTS = {
     ConversationState.UNDERSTAND_DECISION_PROCESS: (
         "Who else is involved in making this decision?"
     ),
+    ConversationState.COLLECT_CALLER_CONTACT: (
+        "What is the best phone number to reach you at for care-navigation updates "
+        "and provider referral coordination?"
+    ),
     ConversationState.CONFIRM_SUMMARY: (
         "Let me make sure I have this right. Does that summary sound accurate?"
     ),

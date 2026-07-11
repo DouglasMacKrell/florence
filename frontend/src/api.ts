@@ -192,7 +192,7 @@ export async function getOperatorSession(sessionId: string): Promise<OperatorSes
 
 const INTAKE_FIELD_LABELS: Record<string, string> = {
   "caller.name": "Caller name",
-  "caller.phone": "Phone number",
+  "caller.phone": "Contact phone",
   "caller.relationship_to_care_recipient": "Relationship to care recipient",
   "care_recipient.age": "Care recipient age",
   "location_preferences.postal_code": "Location / ZIP code",

@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.db.tables import CallRecord
+from app.models.intake import IntakeRecord
 from app.services.conversation import create_session, get_session
 
 
@@ -17,6 +18,10 @@ def start_inbound_call(
         return existing
 
     session = create_session(db)
+    if caller_phone and session.intake is not None:
+        intake = IntakeRecord.model_validate(session.intake.structured_json)
+        intake.caller.phone = caller_phone
+        session.intake.structured_json = intake.model_dump()
     call = CallRecord(
         session_id=session.id,
         twilio_call_sid=twilio_call_sid,

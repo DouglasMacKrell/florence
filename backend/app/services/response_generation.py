@@ -25,6 +25,14 @@ _REINTRO_PHRASES = (
     "hello, i'm florence",
 )
 
+_CALLBACK_PHRASES = (
+    "call you back",
+    "call back later",
+    "reach out to you directly",
+    "get in touch with you directly",
+    "call you later",
+)
+
 
 def sanitize_assistant_reply(reply: str, state: ConversationState, fallback: str) -> str:
     if state == ConversationState.GREETING:
@@ -32,6 +40,11 @@ def sanitize_assistant_reply(reply: str, state: ConversationState, fallback: str
     lowered = reply.lower()
     if any(phrase in lowered for phrase in _REINTRO_PHRASES):
         logger.info("Replacing repeated Florence introduction with scripted fallback")
+        return fallback
+    if state != ConversationState.COLLECT_CALLER_CONTACT and any(
+        phrase in lowered for phrase in _CALLBACK_PHRASES
+    ):
+        logger.info("Replacing callback-style phrasing with scripted fallback")
         return fallback
     return reply
 
@@ -88,7 +101,7 @@ def _reply_messages(
         {"role": "system", "content": RESPONSE_PROMPT},
         {
             "role": "system",
-            "content": state_instruction(state.value, intake.missing_required_fields()),
+            "content": state_instruction(state.value, intake),
         },
         {
             "role": "user",

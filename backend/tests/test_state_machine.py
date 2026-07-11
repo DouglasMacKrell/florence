@@ -34,6 +34,22 @@ def test_advance_through_satisfied_states_stops_at_first_missing_stage() -> None
     assert state == ConversationState.UNDERSTAND_REASON_FOR_CALL
 
 
+def test_decision_process_routes_to_contact_when_phone_missing() -> None:
+    intake = IntakeRecord()
+    assert (
+        advance_state(ConversationState.UNDERSTAND_DECISION_PROCESS, intake)
+        == ConversationState.COLLECT_CALLER_CONTACT
+    )
+
+
+def test_decision_process_skips_contact_when_phone_present() -> None:
+    intake = IntakeRecord.model_validate({"caller": {"phone": "555-123-4567"}})
+    assert (
+        advance_state(ConversationState.UNDERSTAND_DECISION_PROCESS, intake)
+        == ConversationState.CONFIRM_SUMMARY
+    )
+
+
 def test_match_providers_requires_required_fields() -> None:
     intake = IntakeRecord()
     assert (

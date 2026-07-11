@@ -19,3 +19,12 @@ def test_sanitize_keeps_greeting_intro() -> None:
         greeting,
     )
     assert reply == greeting
+
+
+def test_sanitize_replaces_callback_phrasing_outside_contact_stage() -> None:
+    reply = sanitize_assistant_reply(
+        "Can you share your phone number so I can call you back later?",
+        ConversationState.UNDERSTAND_REASON_FOR_CALL,
+        "Could you tell me what has been happening?",
+    )
+    assert reply == "Could you tell me what has been happening?"

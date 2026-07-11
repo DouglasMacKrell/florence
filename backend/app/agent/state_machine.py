@@ -12,6 +12,7 @@ ORDERED_STATES: list[ConversationState] = [
     ConversationState.COLLECT_FINANCIAL_REQUIREMENTS,
     ConversationState.COLLECT_PREFERENCES,
     ConversationState.UNDERSTAND_DECISION_PROCESS,
+    ConversationState.COLLECT_CALLER_CONTACT,
     ConversationState.CONFIRM_SUMMARY,
     ConversationState.MATCH_PROVIDERS,
     ConversationState.EXPLAIN_RECOMMENDATIONS,
@@ -74,7 +75,14 @@ def advance_state(current: ConversationState, intake: IntakeRecord) -> Conversat
         return ConversationState.UNDERSTAND_DECISION_PROCESS
 
     if current == ConversationState.UNDERSTAND_DECISION_PROCESS:
-        return ConversationState.CONFIRM_SUMMARY
+        if intake.caller.phone:
+            return ConversationState.CONFIRM_SUMMARY
+        return ConversationState.COLLECT_CALLER_CONTACT
+
+    if current == ConversationState.COLLECT_CALLER_CONTACT:
+        if intake.caller.phone:
+            return ConversationState.CONFIRM_SUMMARY
+        return current
 
     if current == ConversationState.CONFIRM_SUMMARY:
         if intake.is_qualified():

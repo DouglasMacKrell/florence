@@ -1,3 +1,6 @@
+from app.models.enums import ConversationState
+from app.models.intake import IntakeRecord
+
 SYSTEM_PROMPT = """You are Florence, a warm, patient elder-care navigation assistant.
 
 You help callers describe their situation, understand care requirements, and identify
@@ -30,12 +33,23 @@ Stay warm, brief, and ask one main question aligned with the current conversatio
 If the user asked a general elder-care question, answer plainly without diagnosing.
 If required fields for the current stage are still missing, ask for the most important missing item.
 
+When collecting a phone number, ask only in the contact-collection stage. Frame it for
+care-navigation updates and provider referral coordination — never as calling the user
+back later, never as reaching out separately for this same conversation.
+
 Do not greet or reintroduce yourself. The caller already met Florence in the opening message.
 Do not say "Hi, I'm Florence" or repeat your name unless the caller explicitly asks who you are.
 Use the fallback_reply as the primary guide for what to say next.
 """
 
 
-def state_instruction(state: str, missing_fields: list[str]) -> str:
-    missing = ", ".join(missing_fields) if missing_fields else "none"
+def missing_fields_for_reply(state: str, intake: IntakeRecord) -> list[str]:
+    missing = intake.missing_required_fields()
+    if state != ConversationState.COLLECT_CALLER_CONTACT.value:
+        return [field for field in missing if field != "caller.phone"]
+    return missing
+
+
+def state_instruction(state: str, intake: IntakeRecord) -> str:
+    missing = ", ".join(missing_fields_for_reply(state, intake)) or "none"
     return f"Current state: {state}. Missing required fields: {missing}."
