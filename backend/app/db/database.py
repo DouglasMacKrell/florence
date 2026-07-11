@@ -14,7 +14,10 @@ class Base(DeclarativeBase):
 @lru_cache
 def get_engine():
     settings = get_settings()
-    return create_engine(settings.database_url, pool_pre_ping=True)
+    database_url = settings.database_url
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return create_engine(database_url, pool_pre_ping=True)
 
 
 @lru_cache

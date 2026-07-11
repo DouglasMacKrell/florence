@@ -1,18 +1,43 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
 
 import {
   confirmReferral,
   createSession,
   getSession,
-  MatchResult,
   selectProvider,
   sendMessage,
-  SessionDetail,
-  SessionMessage,
 } from "./api";
+import type { MatchResult, SessionDetail, SessionMessage } from "./api";
 import "./App.css";
 
-type SpeechRecognitionConstructor = new () => SpeechRecognition;
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  readonly [index: number]: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionResultsLike {
+  readonly [index: number]: SpeechRecognitionResultLike;
+}
+
+interface SpeechRecognitionEventLike {
+  results: SpeechRecognitionResultsLike;
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  start: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
 
 declare global {
   interface Window {
@@ -126,7 +151,7 @@ function App() {
       setListening(false);
       setError("Voice input failed");
     };
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const transcript = event.results[0]?.[0]?.transcript;
       if (transcript) {
         setInput(transcript);
