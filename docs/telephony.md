@@ -1,6 +1,6 @@
 # Twilio telephony setup
 
-Florence M2 lets callers dial a Twilio number and talk to the same intake engine as the web app. Audio stays local: Whisper for speech-to-text, Piper for text-to-speech, Ollama for replies when enabled.
+Florence M2 lets callers dial a Twilio number and talk to the same intake engine as the web app. Audio stays local: Whisper for speech-to-text, Piper for text-to-speech. Replies use **scripted stage prompts** by default (Ollama is still used on the web UI).
 
 ## Prerequisites
 
@@ -62,7 +62,17 @@ On your Twilio phone number:
 5. Transcript and intake land in Postgres; operator view works the same as web sessions.
 6. On hang-up, the call record is marked completed.
 
-Phone calls use **scripted stage prompts** by default (`TELEPHONY_SCRIPTED_REPLIES=true`) for shorter, faster replies. Ollama phrasing is still used on the web UI. Set `TELEPHONY_SCRIPTED_REPLIES=false` in `.env` to experiment with Ollama on phone (slower, more verbose).
+### Phone-specific behavior
+
+| Behavior | Detail |
+|----------|--------|
+| Scripted replies | `TELEPHONY_SCRIPTED_REPLIES=true` (default) — faster, predictable for demos |
+| Rules-only extraction | No Ollama on live calls — avoids ~8s latency |
+| Caller ID | Twilio `From` pre-fills `intake.caller.phone` |
+| Contact stage | `COLLECT_CALLER_CONTACT` asks for phone for referral coordination (not callback framing) |
+| Echo filter | Short filler and repeated assistant phrases dropped from transcripts |
+
+Set `TELEPHONY_SCRIPTED_REPLIES=false` to experiment with Ollama on phone (slower, less predictable).
 
 ## Troubleshooting
 

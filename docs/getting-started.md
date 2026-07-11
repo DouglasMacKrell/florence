@@ -108,13 +108,25 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 Open **http://127.0.0.1:5173** (use `127.0.0.1`, not `localhost`, to match CORS settings).
 
-## 7. First conversation
+## 7. First conversation (web)
 
 1. You should see Florence's greeting and an intake progress indicator.
-2. Reply **Yes** to the storage consent prompt.
-3. Describe a care situation (see [demo scenario in handoff.md](handoff.md#23-first-demo-scenario)).
-4. Continue until provider cards appear.
-5. Select a provider to record a mock referral.
+2. Click **Run demo** for the scripted Queens daughter scenario, or walk through manually.
+3. Reply **Yes** to the storage consent prompt.
+4. Describe a care situation (see [demo scenario in handoff.md](handoff.md#23-first-demo-scenario)).
+5. Continue until provider cards appear.
+6. Select a provider to record a mock referral.
+7. Optional: open the **operator view** from the header to inspect lead score and transcript.
+
+## 8. Phone demo (optional)
+
+Requires Twilio credentials and a public tunnel. See [telephony.md](telephony.md).
+
+```bash
+cd backend && pip install -e '.[telephony]'
+./scripts/telephony-dev.sh
+# ngrok http 8001 — update PUBLIC_BASE_URL in .env
+```
 
 ## Troubleshooting
 

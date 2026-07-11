@@ -83,9 +83,18 @@ Copy `.env.example` → `.env` (never commit).
 | `DATABASE_URL` | Postgres connection (auto-converts to psycopg v3 driver) |
 | `OLLAMA_BASE_URL` | Local Ollama server |
 | `OLLAMA_MODEL` | Model tag (default `llama3.2:3b`) |
-| `ENABLE_OLLAMA` | Toggle LLM layer |
+| `OLLAMA_MAX_RETRIES` | Retry count for Ollama HTTP failures |
+| `ENABLE_OLLAMA` | Toggle LLM layer (web replies + web extraction) |
+| `USE_ALEMBIC` | Apply Alembic migrations on startup instead of `create_all` |
 | `REDACT_LOGS` | Mask PII in log output |
 | `CORS_ORIGINS` | Allowed frontend origins |
+| `ENABLE_TELEPHONY` | Enable Twilio webhooks and media stream |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | Twilio credentials |
+| `TWILIO_PHONE_NUMBER` | Inbound number shown in UI header |
+| `PUBLIC_BASE_URL` | Tunnel HTTPS URL for Twilio signature validation |
+| `PUBLIC_WEBSOCKET_URL` | WSS URL for `/twilio/media` |
+| `TELEPHONY_SCRIPTED_REPLIES` | Scripted phone prompts (default `true`) |
+| `WHISPER_MODEL` / `PIPER_VOICE_ID` | STT/TTS model selection for phone |
 
 Frontend: `frontend/.env` → `VITE_API_BASE_URL`
 
@@ -110,6 +119,11 @@ Before coding:
 | Ollama client | `backend/app/services/ollama.py` |
 | Redaction | `backend/app/security/redaction.py` |
 | Session API | `backend/app/api/sessions.py` |
+| Twilio API | `backend/app/api/twilio.py` |
+| Pipecat voice pipeline | `backend/app/voice/florence_processor.py` |
+| Operator dashboard API | `backend/app/api/operator.py` |
+
+Backend test suite: **71 tests** (`pytest --collect-only`).
 
 ## Adding a feature (checklist)
 

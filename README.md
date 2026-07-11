@@ -1,6 +1,6 @@
 # Florence
 
-Florence is a humanistic elder-care navigation agent that guides families through intake, recommends care types, matches providers, and submits referrals.
+Florence is a humanistic elder-care navigation agent that guides families through intake, recommends care types, matches providers, and submits referrals — by **web chat** or **phone**.
 
 **Hackathon MVP for [Arya Health](docs/portfolio.md)** — Jul 2026.
 
@@ -8,9 +8,11 @@ Florence is a humanistic elder-care navigation agent that guides families throug
 
 | Milestone | Status |
 |-----------|--------|
-| Step Zero — security foundation | Complete |
-| M1 — Web app (text + browser voice) + backend core | Functional ([details](docs/roadmap.md)) |
-| M2 — Twilio telephony | Not started |
+| Step Zero — security foundation | ✅ Complete |
+| M1 — Web app (text + browser voice) + backend core | ✅ Demo-ready |
+| M2 — Twilio telephony | 🟡 Functional locally ([setup](docs/telephony.md)) |
+
+Full detail: [docs/roadmap.md](docs/roadmap.md)
 
 ## Documentation
 
@@ -18,22 +20,21 @@ Florence is a humanistic elder-care navigation agent that guides families throug
 
 | Doc | Description |
 |-----|-------------|
-| [Portfolio overview](docs/portfolio.md) | Problem, solution, demo story, tech highlights |
-| [Getting started](docs/getting-started.md) | Install and run locally |
+| [Portfolio overview](docs/portfolio.md) | Problem, solution, demo story, architecture |
 | [Quick start](docs/quick-start.md) | User + developer local run guide |
+| [Telephony setup](docs/telephony.md) | Twilio + ngrok phone demo |
 | [Architecture](docs/architecture.md) | System design and data flow |
-| [API reference](docs/api.md) | REST endpoints |
+| [API reference](docs/api.md) | REST + Twilio endpoints |
 | [Roadmap](docs/roadmap.md) | What's done and what's next |
 | [Product handoff (full spec)](docs/handoff.md) | Original requirements |
 | [Security policy](SECURITY.md) | Data handling and hooks |
 
 ## Quick Start
 
-Run Florence locally:
-
 | Audience | Guide |
 |----------|-------|
-| **Try the demo** | [docs/quick-start.md](docs/quick-start.md#user-quick-start-5-minutes) |
+| **Try the web demo** | [docs/quick-start.md](docs/quick-start.md#user-quick-start-5-minutes) |
+| **Try the phone demo** | [docs/telephony.md](docs/telephony.md) |
 | **Developers** | [docs/quick-start.md](docs/quick-start.md#developer-quick-start-15-minutes) |
 
 ```bash
@@ -44,15 +45,14 @@ Run Florence locally:
 
 Open http://127.0.0.1:5173
 
-Full details: [docs/quick-start.md](docs/quick-start.md) · [docs/getting-started.md](docs/getting-started.md)
-
 ## Stack
 
-- **Frontend:** React, Vite, TypeScript, Web Speech API
+- **Frontend:** React 19, Vite, TypeScript, Web Speech API
 - **Backend:** FastAPI, Pydantic v2, SQLAlchemy 2
 - **Database:** Postgres 16 (Docker)
 - **LLM:** Ollama (`llama3.2:3b`) — local only
-- **Testing:** pytest, ruff, oxlint, gitleaks
+- **Telephony:** Twilio, Pipecat, Whisper STT, Piper TTS
+- **Testing:** 71 pytest tests, ruff, oxlint, gitleaks
 
 ## Git workflow
 

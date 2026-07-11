@@ -48,8 +48,8 @@ Do not implement production logic without a preceding failing test. Bug fixes re
 
 ## Architecture
 
-- **Milestone 1 (current):** React web app (text + browser voice) + FastAPI + Postgres + Ollama — see [docs/architecture.md](docs/architecture.md)
-- **Milestone 2:** Twilio telephony via Pipecat, reusing the same conversation engine — see [docs/roadmap.md](docs/roadmap.md)
+- **Milestone 1:** React web app (text + browser voice) + FastAPI + Postgres + Ollama — see [docs/architecture.md](docs/architecture.md)
+- **Milestone 2:** Twilio telephony via Pipecat, reusing the same conversation engine — functional locally; see [docs/telephony.md](docs/telephony.md) and [docs/roadmap.md](docs/roadmap.md)
 
 ## Security constraints
 

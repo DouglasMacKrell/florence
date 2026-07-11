@@ -2,23 +2,34 @@
 
 ## Design principles
 
-1. **Structured over free-form** — the state machine owns transitions; the LLM owns phrasing and extraction assistance.
+1. **Structured over free-form** — the state machine owns transitions; the LLM assists with phrasing and extraction on web.
 2. **Local-first privacy** — user intake stays on-machine via Ollama; no hosted LLM APIs.
 3. **Explainable matching** — deterministic scoring with human-readable strengths/concerns.
-4. **One conversation engine** — M1 web and planned M2 telephony share backend logic.
+4. **One conversation engine** — web and phone share `services/conversation.py`; only transport differs.
 
 ## System context
 
 ```mermaid
 flowchart TB
-    subgraph client [M1 — Web client]
-        Browser[Browser]
+    subgraph web [Web — M1]
+        Browser[React UI]
         WebSpeech[Web Speech API]
         Browser --> WebSpeech
     end
 
+    subgraph phone [Phone — M2]
+        Twilio[Twilio voice]
+        Pipecat[Pipecat pipeline]
+        Whisper[Whisper STT]
+        Piper[Piper TTS]
+        Twilio --> Pipecat
+        Pipecat --> Whisper
+        Pipecat --> Piper
+    end
+
     subgraph backend [Backend — FastAPI]
-        API[Session API]
+        SessionAPI[Session API]
+        TwilioAPI[Twilio API]
         Conv[Conversation service]
         SM[State machine]
         Extract[Intake extraction]
@@ -27,7 +38,8 @@ flowchart TB
         Match[Matching engine]
         Safety[Safety detection]
 
-        API --> Conv
+        SessionAPI --> Conv
+        TwilioAPI --> Conv
         Conv --> SM
         Conv --> Extract
         Extract --> Ollama
@@ -41,11 +53,28 @@ flowchart TB
         Seed[data/providers.json]
     end
 
-    Browser -->|REST JSON| API
-    API --> PG
+    Browser -->|REST + SSE| SessionAPI
+    Pipecat -->|transcripts| Conv
+    Conv --> Ollama
+    SessionAPI --> PG
+    TwilioAPI --> PG
     Match --> Seed
     Match --> PG
 ```
+
+## Web vs phone behavior
+
+| Aspect | Web | Phone |
+|--------|-----|-------|
+| Transport | REST JSON + SSE stream | Twilio webhooks + WebSocket media |
+| Replies | Ollama (with scripted fallback) | Scripted stage prompts by default |
+| Extraction | Ollama JSON + rules | Rules only (lower latency) |
+| Voice | Browser Web Speech API | Whisper STT + Piper TTS |
+| Caller phone | Collected in contact stage | Pre-filled from Twilio `From` when available |
+
+Phone defaults to scripted replies (`TELEPHONY_SCRIPTED_REPLIES=true`) because live Ollama calls added ~8s latency and echo-driven repeats. The same state machine and intake schema apply to both channels.
+
+See [conversation-engine.md](conversation-engine.md) and [telephony.md](telephony.md).
 
 ## Repository layout
 
@@ -54,22 +83,23 @@ florence/
 ├── backend/                 # FastAPI application
 │   ├── app/
 │   │   ├── agent/           # State machine, care recommender, prompts, safety
-│   │   ├── api/             # REST routes (sessions)
-│   │   ├── db/              # SQLAlchemy models, engine, init
+│   │   ├── api/             # REST routes (sessions, operator, twilio, demo)
+│   │   ├── db/              # SQLAlchemy models, engine, Alembic helper
 │   │   ├── matching/        # Provider scoring engine
 │   │   ├── models/          # Pydantic domain models
 │   │   ├── security/        # Log redaction
-│   │   └── services/        # Conversation, Ollama, extraction
-│   └── tests/               # pytest suite (35 tests)
+│   │   ├── services/        # Conversation, Ollama, extraction, Twilio
+│   │   └── voice/           # Pipecat pipeline, Florence processor
+│   └── tests/               # pytest suite (71 tests)
 ├── frontend/                # React + Vite + TypeScript
 ├── data/
 │   └── providers.json       # 18 synthetic NYC-area providers
 ├── docs/                    # This documentation set
-├── scripts/                 # test, lint, pre-push gate
+├── scripts/                 # test, lint, pre-push gate, telephony-dev
 └── docker-compose.yml       # Postgres 16
 ```
 
-## Request flow (one message)
+## Request flow — web message
 
 ```mermaid
 sequenceDiagram
@@ -92,24 +122,51 @@ sequenceDiagram
         Ext->>Ext: rule-based extraction
     end
     Conv->>SM: advance_state
-    Conv->>Ollama: generate reply (optional)
+    Conv->>Ollama: generate reply (streamed SSE)
     Conv->>DB: persist intake + assistant message
     API-->>UI: reply, state, intake, matches
+```
+
+## Request flow — phone call
+
+```mermaid
+sequenceDiagram
+    participant Caller as Caller
+    participant Twilio as Twilio
+    participant API as FastAPI
+    participant Pipe as Pipecat
+    participant Conv as Conversation
+    participant DB as Postgres
+
+    Caller->>Twilio: inbound call
+    Twilio->>API: POST /twilio/voice
+    API->>DB: create session + call record
+    API-->>Twilio: TwiML Connect Stream
+    Twilio->>Pipe: WS /twilio/media
+    Pipe->>Conv: greeting (scripted)
+    loop each turn
+        Caller->>Pipe: audio
+        Pipe->>Conv: transcript (rules extraction)
+        Conv->>DB: intake + messages
+        Conv-->>Pipe: scripted reply
+        Pipe->>Caller: Piper TTS
+    end
 ```
 
 ## Persistence
 
 | Table | Purpose |
 |-------|---------|
-| `sessions` | Web conversation session, current state |
+| `sessions` | Conversation session, current state |
 | `messages` | Turn-by-turn transcript |
 | `intakes` | Structured JSON + completion % |
 | `providers` | Seeded from `data/providers.json` |
 | `care_recommendations` | Primary care type + rationale |
 | `matches` | Top 1–3 provider results |
 | `referrals` | Selected provider + mock status |
+| `call_records` | Twilio call SID, status, linked session |
 
-Tables are created on startup via `init_db()` (SQLAlchemy `create_all`). Alembic migrations are planned for production hardening.
+Tables are created on startup via `init_db()` (SQLAlchemy `create_all`). Set `USE_ALEMBIC=true` to apply versioned migrations instead.
 
 ## LLM responsibilities vs application responsibilities
 
@@ -117,13 +174,16 @@ Tables are created on startup via `init_db()` (SQLAlchemy `create_all`). Alembic
 |---------|-------|
 | Which stage comes next | **State machine** |
 | Required fields for qualification | **IntakeRecord.missing_required_fields()** |
-| Natural language reply | **Ollama** (fallback: scripted prompts) |
-| Field extraction | **Ollama JSON** + **rule-based fallback** |
+| Natural language reply (web) | **Ollama** (fallback: scripted prompts) |
+| Natural language reply (phone) | **Scripted STATE_PROMPTS** (default) |
+| Field extraction (web) | **Ollama JSON** + **rule-based fallback** |
+| Field extraction (phone) | **Rules only** |
 | Provider ranking | **Matching engine** (deterministic) |
 | Emergency escalation | **Safety phrase detector** |
 
-## M2 telephony (planned)
+## Related docs
 
-Twilio + Pipecat will attach to the same `conversation` service. Browser voice in M1 already sends **text** to the same `/sessions/{id}/messages` endpoint; M2 swaps STT/TTS transport while reusing intake, matching, and referral logic.
-
-See [roadmap.md](roadmap.md).
+- [Conversation engine](conversation-engine.md)
+- [Telephony setup](telephony.md)
+- [API reference](api.md)
+- [Roadmap](roadmap.md)

@@ -66,8 +66,11 @@ SQLAlchemy models in `backend/app/db/tables.py`:
 | `CareRecommendationRecordORM` | care_recommendations |
 | `MatchRecordORM` | matches |
 | `ReferralRecordORM` | referrals |
+| `CallRecord` | call_records (Twilio SID, status, linked session) |
 
 Intake JSON is stored in `intakes.structured_json` (JSON column).
+
+Phone calls create a `call_records` row linked to the same `sessions` row used for web chat.
 
 ## Enums
 

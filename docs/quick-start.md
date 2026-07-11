@@ -4,7 +4,8 @@ Get Florence running locally in two paths depending on who you are.
 
 | I want to… | Go to |
 |------------|-------|
-| **Try the demo** (judge, PM, designer) | [User quick start ↓](#user-quick-start-5-minutes) |
+| **Try the web demo** (judge, PM, designer) | [User quick start ↓](#user-quick-start-5-minutes) |
+| **Try the phone demo** (Twilio) | [Phone demo ↓](#phone-demo-optional) |
 | **Develop or contribute** (engineer) | [Developer quick start ↓](#developer-quick-start-15-minutes) |
 
 **URLs when running:** UI → http://127.0.0.1:5173 · API → http://127.0.0.1:8001
@@ -75,6 +76,8 @@ Manual script:
 
 **Voice:** Click **Voice input** (Chrome recommended) or **Listen** on replies.
 
+**Operator view:** Use the header link to inspect lead score, transcript, and referral economics after a session.
+
 ### If something goes wrong
 
 | Problem | Try this |
@@ -85,6 +88,20 @@ Manual script:
 | No provider cards | Include ZIP code + budget in your messages |
 
 More help: [Troubleshooting](#troubleshooting) · [getting-started.md](getting-started.md)
+
+---
+
+## Phone demo (optional)
+
+Call Florence on a Twilio number — same intake engine as the web app, with spoken prompts.
+
+**Requires:** Twilio account, ngrok (or similar tunnel), telephony Python extras.
+
+1. Follow [telephony.md](telephony.md) to configure `.env` and Twilio webhooks.
+2. Run `./scripts/telephony-dev.sh` and start ngrok on port 8001.
+3. Dial your Twilio number — the web header shows the configured number when telephony is enabled.
+
+Phone calls use **scripted stage prompts** by default for reliable live demos. Web chat still uses Ollama for natural replies.
 
 ---
 
@@ -215,6 +232,7 @@ curl -X POST http://127.0.0.1:8001/sessions
 ## Next steps
 
 - [getting-started.md](getting-started.md) — detailed setup notes
+- [telephony.md](telephony.md) — Twilio + ngrok phone demo
 - [development.md](development.md) — TDD, branches, hooks
 - [portfolio.md](portfolio.md) — demo narrative for presentations
-- [api.md](api.md) — REST API reference
+- [api.md](api.md) — REST + Twilio API reference

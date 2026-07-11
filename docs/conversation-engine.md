@@ -1,23 +1,49 @@
 # Conversation Engine
 
-Florence separates **what to ask next** (deterministic) from **how to say it** (LLM-assisted).
+Florence separates **what to ask next** (deterministic) from **how to say it** (LLM-assisted on web, scripted on phone by default).
 
 ## State machine
 
-Stages follow the product spec in [handoff.md §11](handoff.md#11-conversation-state-machine):
+Stages follow the product spec in [handoff.md §11](handoff.md#11-conversation-state-machine), with one addition for contact collection:
 
 ```text
 GREETING → DISCLOSURE_AND_CONSENT → UNDERSTAND_REASON_FOR_CALL
   → IDENTIFY_CARE_RECIPIENT → ASSESS_CARE_NEEDS → ASSESS_URGENCY_AND_SAFETY
   → COLLECT_LOCATION_REQUIREMENTS → COLLECT_FINANCIAL_REQUIREMENTS
-  → COLLECT_PREFERENCES → UNDERSTAND_DECISION_PROCESS → CONFIRM_SUMMARY
-  → MATCH_PROVIDERS → EXPLAIN_RECOMMENDATIONS → CAPTURE_FOLLOWUP_CONSENT
-  → END_OR_HUMAN_HANDOFF
+  → COLLECT_PREFERENCES → UNDERSTAND_DECISION_PROCESS → COLLECT_CALLER_CONTACT
+  → CONFIRM_SUMMARY → MATCH_PROVIDERS → EXPLAIN_RECOMMENDATIONS
+  → CAPTURE_FOLLOWUP_CONSENT → END_OR_HUMAN_HANDOFF
 ```
 
 Implementation: `backend/app/agent/state_machine.py`
 
 Each state advances when its **completion condition** is met (e.g. consent captured, age provided, budget entered). The LLM cannot skip states.
+
+### Contact collection stage
+
+`COLLECT_CALLER_CONTACT` runs after decision-process questions and before summary confirmation. It collects the caller's phone number for **referral coordination** — not framed as "we'll call you back later."
+
+- On **phone**, Twilio's `From` header pre-fills `intake.caller.phone` when available; the stage may be skipped.
+- On **web**, phone is hidden from Ollama reply prompts until this stage to avoid premature callback phrasing.
+- `sanitize_assistant_reply()` blocks callback language outside this stage.
+
+## Web vs phone
+
+| Aspect | Web | Phone |
+|--------|-----|-------|
+| Reply generation | Ollama streamed via SSE | Scripted `STATE_PROMPTS` (default) |
+| Extraction | Ollama JSON + rules | Rules only (`rules_only_extraction=True`) |
+| State skipping | Standard `advance_state()` | `advance_through_satisfied_states()` after extraction |
+| Echo handling | N/A (typed text) | Transcript filter blocks filler/echo |
+
+Configure phone behavior in `.env`:
+
+```text
+TELEPHONY_SCRIPTED_REPLIES=true   # default — recommended for demos
+ENABLE_OLLAMA=true                # still used on web
+```
+
+Set `TELEPHONY_SCRIPTED_REPLIES=false` to experiment with Ollama on phone (slower, less predictable for live calls).
 
 ## Required fields for qualification
 
@@ -33,7 +59,7 @@ A lead is qualified when all required fields are captured. Tracked by `IntakeRec
 
 See [data-models.md](data-models.md).
 
-## Ollama integration
+## Ollama integration (web)
 
 | Component | File | Role |
 |-----------|------|------|
@@ -48,11 +74,12 @@ See [data-models.md](data-models.md).
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2:3b
 ENABLE_OLLAMA=true
+OLLAMA_MAX_RETRIES=2
 ```
 
 **No API keys** — Ollama runs as a local HTTP server.
 
-### Extraction flow
+### Extraction flow (web)
 
 1. Build prompt with current state, intake JSON, recent messages, latest user text.
 2. Request JSON from Ollama (`format: json`).
@@ -60,7 +87,7 @@ ENABLE_OLLAMA=true
 4. Always run rule-based extraction as supplement/fallback.
 5. Run safety phrase detection on user text.
 
-### Response flow
+### Response flow (web)
 
 1. If safety flag → return emergency escalation message (no matching).
 2. If `ENABLE_OLLAMA=false` or Ollama unavailable → use scripted `STATE_PROMPTS`.
@@ -79,24 +106,29 @@ When triggered:
 - Normal provider matching is suppressed
 - Assistant returns escalation guidance (not medical advice)
 
-## Frontend voice (M1)
+## Frontend voice (M1 web)
 
-Browser **Web Speech API** handles STT/TTS client-side. Transcribed text is sent to the same REST endpoint as typed messages — no separate voice pipeline in M1.
+Browser **Web Speech API** handles STT/TTS client-side. Transcribed text is sent to the same REST endpoint as typed messages — no separate voice pipeline on web.
+
+Phone voice uses Pipecat + Whisper + Piper — see [telephony.md](telephony.md).
 
 ## Module map
 
 | File | Purpose |
 |------|---------|
-| `services/conversation.py` | Orchestrates turns, persistence, matching trigger |
+| `services/conversation.py` | Orchestrates turns, persistence, matching trigger, telephony flags |
 | `agent/state_machine.py` | `advance_state()`, transition rules |
 | `services/intake_extraction.py` | Field extraction |
-| `services/response_generation.py` | Reply generation |
+| `services/response_generation.py` | Reply generation + callback phrase sanitization |
 | `services/ollama.py` | Ollama HTTP client |
+| `voice/florence_processor.py` | Pipecat turn handler for phone |
+| `services/call_sessions.py` | Twilio call ↔ session linking |
 
 ## Testing
 
-- `tests/test_state_machine.py` — transitions and gating
+- `tests/test_state_machine.py` — transitions and gating (including contact stage)
 - `tests/test_intake_extraction.py` — rule extraction
 - `tests/test_ollama_client.py` — mocked HTTP client
 - `tests/test_safety.py` — phrase detection
 - `tests/test_sessions_api.py` — end-to-end session API (Ollama disabled)
+- `tests/test_twilio_api.py` — TwiML, webhooks, call records
