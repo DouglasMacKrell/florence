@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
@@ -18,7 +19,11 @@ from app.models.enums import ConversationState as ConversationStateEnum
 from app.models.intake import IntakeRecord
 from app.services.intake_extraction import extract_with_ollama, extract_with_rules
 from app.services.provider_loader import list_provider_records
-from app.services.response_generation import generate_assistant_reply
+from app.services.response_generation import (
+    generate_assistant_reply,
+    stream_assistant_reply,
+    stream_text_chunks,
+)
 
 
 @dataclass
@@ -28,6 +33,19 @@ class AssistantTurn:
     intake: IntakeRecord
     matches: list[dict] | None = None
     care_recommendation: dict | None = None
+
+
+@dataclass
+class PreparedTurn:
+    session_id: str
+    state: str
+    intake: IntakeRecord
+    conversation_state: ConversationStateEnum
+    fallback: str
+    history: list[dict[str, str]]
+    matches: list[dict] | None = None
+    care_recommendation: dict | None = None
+    reply_override: str | None = None
 
 
 STATE_PROMPTS = {
@@ -96,6 +114,12 @@ def get_session(db: Session, session_id: str) -> SessionRecord | None:
 
 
 def process_user_message(db: Session, session_id: str, content: str) -> AssistantTurn:
+    prepared = prepare_user_message_turn(db, session_id, content)
+    reply = _generate_reply(prepared)
+    return complete_user_message_turn(db, prepared, reply)
+
+
+def prepare_user_message_turn(db: Session, session_id: str, content: str) -> PreparedTurn:
     session = db.get(SessionRecord, session_id)
     if session is None:
         raise ValueError("Session not found")
@@ -127,15 +151,9 @@ def process_user_message(db: Session, session_id: str, content: str) -> Assistan
     fallback = STATE_PROMPTS.get(
         ConversationStateEnum(session.current_state), "Thank you for sharing that."
     )
-    reply = generate_assistant_reply(
-        intake=intake,
-        state=ConversationStateEnum(session.current_state),
-        history=_message_history(session),
-        fallback=fallback,
-    )
     care_recommendation_data = None
     matches_data = None
-
+    reply_override = None
     if (
         next_state == ConversationState.MATCH_PROVIDERS
         and current_state != ConversationState.MATCH_PROVIDERS
@@ -167,20 +185,66 @@ def process_user_message(db: Session, session_id: str, content: str) -> Assistan
                     explanation_json=match.model_dump(),
                 )
             )
-        reply = (
+        reply_override = (
             f"I recommend exploring {recommendation.primary.replace('_', ' ')} first. "
             f"I found {len(matches)} provider options that may fit."
         )
 
-    db.add(MessageRecord(session_id=session_id, role="assistant", content=reply))
-    db.flush()
-
-    return AssistantTurn(
-        content=reply,
+    return PreparedTurn(
+        session_id=session_id,
         state=session.current_state,
         intake=intake,
+        conversation_state=ConversationStateEnum(session.current_state),
+        fallback=fallback,
+        history=_message_history(session),
         matches=matches_data,
         care_recommendation=care_recommendation_data,
+        reply_override=reply_override,
+    )
+
+
+def _generate_reply(prepared: PreparedTurn) -> str:
+    if prepared.reply_override:
+        return prepared.reply_override
+    return generate_assistant_reply(
+        intake=prepared.intake,
+        state=prepared.conversation_state,
+        history=prepared.history,
+        fallback=prepared.fallback,
+    )
+
+
+def complete_user_message_turn(
+    db: Session,
+    prepared: PreparedTurn,
+    reply: str,
+) -> AssistantTurn:
+    db.add(
+        MessageRecord(
+            session_id=prepared.session_id,
+            role="assistant",
+            content=reply,
+        )
+    )
+    db.flush()
+    return AssistantTurn(
+        content=reply,
+        state=prepared.state,
+        intake=prepared.intake,
+        matches=prepared.matches,
+        care_recommendation=prepared.care_recommendation,
+    )
+
+
+def stream_user_message_tokens(prepared: PreparedTurn) -> Iterator[str]:
+    if prepared.reply_override:
+        yield from stream_text_chunks(prepared.reply_override)
+        return
+    yield from stream_assistant_reply(
+        intake=prepared.intake,
+        state=prepared.conversation_state,
+        history=prepared.history,
+        fallback=prepared.fallback,
     )
 
 

@@ -34,16 +34,16 @@ Last updated: Jul 2026 (Arya Health hackathon)
 - [x] Provider cards + mock referral confirmation
 - [x] 35 backend tests, frontend build/lint
 - [x] First local run verified
+- [x] SSE streaming for assistant replies
+- [x] Quick-start docs + `dev-up.sh` bootstrap script
 
 ### Remaining / polish
 
-- [ ] SSE streaming for assistant replies
 - [ ] Richer Ollama extraction (smaller model tuning, retry logic)
 - [ ] Intake progress sidebar (partial — completion % only)
 - [ ] Operator dashboard (lead score, referral economics, transcript view)
 - [ ] Demo script automation / seeded walkthrough
 - [ ] Alembic migrations (currently `create_all` on startup)
-- [ ] README runbook consolidation (partially moved to docs/)
 
 ## M2 — Telephony ⬜
 

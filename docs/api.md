@@ -70,6 +70,20 @@ Send a user message; receive assistant reply and updated intake.
 
 When intake is complete and state reaches matching, `matches` and `care_recommendation` may be populated.
 
+### `POST /sessions/{session_id}/messages/stream`
+
+Same request body as `/messages`, but streams the assistant reply via **Server-Sent Events** (`text/event-stream`).
+
+**Events**
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `token` | `{ "text": "..." }` | Incremental reply chunk |
+| `done` | Same shape as `/messages` response | Final turn metadata after reply is saved |
+| `error` | `{ "detail": "..." }` | Stream failed |
+
+The frontend uses this endpoint by default for progressive reply rendering.
+
 ### `POST /sessions/{session_id}/select-provider`
 
 Record user's provider choice (status `pending`).
@@ -107,7 +121,6 @@ Configured via `CORS_ORIGINS` in `.env`. Default includes both `localhost` and `
 
 ## Not yet implemented
 
-- SSE streaming for assistant replies
 - Twilio webhooks (`POST /twilio/voice`, `WS /twilio/media`)
 - Operator dashboard endpoints
 

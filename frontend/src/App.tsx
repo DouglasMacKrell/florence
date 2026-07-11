@@ -6,7 +6,7 @@ import {
   createSession,
   getSession,
   selectProvider,
-  sendMessage,
+  sendMessageStream,
 } from "./api";
 import type { MatchResult, SessionDetail, SessionMessage } from "./api";
 import "./App.css";
@@ -103,11 +103,20 @@ function App() {
     const content = input.trim();
     setInput("");
     setMessages((current) => [...current, { role: "user", content }]);
+    setMessages((current) => [...current, { role: "assistant", content: "" }]);
     setLoading(true);
     setError(null);
     try {
-      const reply = await sendMessage(sessionId, content);
-      setMessages((current) => [...current, { role: "assistant", content: reply.content }]);
+      const reply = await sendMessageStream(sessionId, content, (token) => {
+        setMessages((current) => {
+          const next = [...current];
+          const last = next[next.length - 1];
+          if (last?.role === "assistant") {
+            next[next.length - 1] = { ...last, content: last.content + token };
+          }
+          return next;
+        });
+      });
       setMatches(reply.matches ?? []);
       setCareRecommendation(reply.care_recommendation);
       await refreshSession(sessionId);

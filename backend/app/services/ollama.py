@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
@@ -45,6 +46,34 @@ class OllamaClient:
         if not isinstance(content, str):
             raise OllamaError("Ollama response missing assistant content")
         return content
+
+    def chat_stream(self, messages: list[dict[str, str]]) -> Iterator[str]:
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+        }
+
+        try:
+            with (
+                httpx.Client(timeout=self.timeout_seconds) as client,
+                client.stream(
+                    "POST",
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                ) as response,
+            ):
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line:
+                        continue
+                    data = json.loads(line)
+                    message = data.get("message", {})
+                    content = message.get("content")
+                    if isinstance(content, str) and content:
+                        yield content
+        except httpx.HTTPError as exc:
+            raise OllamaError(str(exc)) from exc
 
     def chat_json(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         content = self.chat(messages, json_mode=True)
