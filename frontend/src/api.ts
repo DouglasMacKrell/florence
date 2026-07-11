@@ -14,6 +14,7 @@ export type MatchResult = {
   rank: number;
   strengths: string[];
   concerns: string[];
+  estimated_referral_value?: number | null;
 };
 
 export type SessionDetail = {
@@ -22,6 +23,7 @@ export type SessionDetail = {
   status: string;
   intake: IntakeRecord;
   completion_percent: number;
+  missing_fields: string[];
   messages: SessionMessage[];
   matches: MatchResult[];
   care_recommendation?: {
@@ -32,6 +34,25 @@ export type SessionDetail = {
   referral?: {
     provider_id: string;
     status: string;
+  };
+};
+
+export type OperatorSession = {
+  session_id: string;
+  state: string;
+  status: string;
+  completion_percent: number;
+  missing_fields: string[];
+  lead_score: number;
+  lead_category: string;
+  lead_breakdown: Record<string, number>;
+  transcript: SessionMessage[];
+  matches: MatchResult[];
+  care_recommendation?: SessionDetail["care_recommendation"];
+  referral?: {
+    provider_id: string;
+    status: string;
+    estimated_referral_value?: number | null;
   };
 };
 
@@ -156,6 +177,34 @@ export async function getSession(sessionId: string): Promise<SessionDetail> {
     throw new Error("Failed to load session");
   }
   return response.json();
+}
+
+export async function getOperatorSession(sessionId: string): Promise<OperatorSession> {
+  const response = await fetch(`${API_BASE}/operator/sessions/${sessionId}`);
+  if (!response.ok) {
+    throw new Error("Failed to load operator view");
+  }
+  return response.json();
+}
+
+const INTAKE_FIELD_LABELS: Record<string, string> = {
+  "caller.name": "Caller name",
+  "caller.phone": "Phone number",
+  "caller.relationship_to_care_recipient": "Relationship to care recipient",
+  "care_recipient.age": "Care recipient age",
+  "location_preferences.postal_code": "Location / ZIP code",
+  "care_needs": "Care needs",
+  "timing.urgency": "Timing / urgency",
+  "financial.monthly_budget_max": "Budget",
+  "consent.consent_to_contact": "Consent to follow up",
+};
+
+export function intakeFieldLabel(field: string): string {
+  return INTAKE_FIELD_LABELS[field] ?? field;
+}
+
+export function leadCategoryLabel(category: string): string {
+  return category.replaceAll("_", " ");
 }
 
 export async function selectProvider(sessionId: string, providerId: string): Promise<void> {

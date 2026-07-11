@@ -40,8 +40,8 @@ Last updated: Jul 2026 (Arya Health hackathon)
 ### Remaining / polish
 
 - [ ] Richer Ollama extraction (smaller model tuning, retry logic)
-- [ ] Intake progress sidebar (partial — completion % only)
-- [ ] Operator dashboard (lead score, referral economics, transcript view)
+- [x] Intake progress sidebar (checklist + completion %)
+- [x] Operator dashboard (lead score, referral economics, transcript view)
 - [x] Demo script automation / seeded walkthrough
 - [ ] Alembic migrations (currently `create_all` on startup)
 
@@ -71,7 +71,7 @@ From [handoff.md §27](handoff.md#27-definition-of-done-for-the-hackathon):
 | User selects provider + mock referral | ✅ |
 | Safety scenario routes correctly | ✅ (phrase detection; UI surfacing basic) |
 | Callable Twilio number | ⬜ M2 |
-| Operator dashboard | ⬜ Partial |
+| Operator dashboard | ✅ |
 
 ## Promotion criteria (main branch)
 

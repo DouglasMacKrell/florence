@@ -31,7 +31,24 @@ class SessionDetailResponse(BaseModel):
     status: str
     intake: IntakeRecord
     completion_percent: int
+    missing_fields: list[str]
     messages: list[dict]
+    matches: list[dict]
+    care_recommendation: dict | None = None
+    referral: dict | None = None
+
+
+class OperatorSessionResponse(BaseModel):
+    session_id: str
+    state: str
+    status: str
+    intake: IntakeRecord
+    completion_percent: int
+    missing_fields: list[str]
+    lead_score: int
+    lead_category: str
+    lead_breakdown: dict[str, int]
+    transcript: list[dict]
     matches: list[dict]
     care_recommendation: dict | None = None
     referral: dict | None = None

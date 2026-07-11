@@ -31,6 +31,7 @@ from app.services.conversation import (
     stream_user_message_tokens,
 )
 from app.services.provider_loader import load_providers_from_seed
+from app.services.response_generation import finalize_assistant_reply
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 DbSession = Annotated[Session, Depends(get_db_session)]
@@ -80,6 +81,7 @@ def read_session(session_id: str, db: DbSession) -> SessionDetailResponse:
         status=session.status,
         intake=intake,
         completion_percent=intake.completion_percent(),
+        missing_fields=intake.missing_required_fields(),
         messages=messages,
         matches=matches,
         care_recommendation=(
@@ -137,7 +139,11 @@ def stream_message(
             for token in stream_user_message_tokens(prepared):
                 chunks.append(token)
                 yield _sse_event("token", {"text": token})
-            reply = "".join(chunks)
+            reply = finalize_assistant_reply(
+                "".join(chunks),
+                state=prepared.conversation_state,
+                fallback=prepared.fallback,
+            )
             turn = complete_user_message_turn(db, prepared, reply)
             yield _sse_event(
                 "done",

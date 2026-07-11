@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.demo import router as demo_router
+from app.api.operator import router as operator_router
 from app.api.sessions import router as sessions_router
 from app.config import get_settings
 from app.db.database import init_db
@@ -29,6 +30,7 @@ app.add_middleware(
 
 app.include_router(sessions_router)
 app.include_router(demo_router)
+app.include_router(operator_router)
 
 
 @app.get("/health")

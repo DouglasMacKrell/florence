@@ -16,6 +16,25 @@ EMERGENCY_REPLY = (
     "but I cannot provide emergency medical care."
 )
 
+_REINTRO_PHRASES = (
+    "i'm florence",
+    "i am florence",
+    "hi! i'm florence",
+    "hello! i'm florence",
+    "hi, i'm florence",
+    "hello, i'm florence",
+)
+
+
+def sanitize_assistant_reply(reply: str, state: ConversationState, fallback: str) -> str:
+    if state == ConversationState.GREETING:
+        return reply
+    lowered = reply.lower()
+    if any(phrase in lowered for phrase in _REINTRO_PHRASES):
+        logger.info("Replacing repeated Florence introduction with scripted fallback")
+        return fallback
+    return reply
+
 
 def generate_assistant_reply(
     *,
@@ -44,7 +63,7 @@ def generate_assistant_reply(
         logger.warning("Ollama reply generation failed; using fallback")
         return fallback
 
-    return reply or fallback
+    return sanitize_assistant_reply(reply or fallback, state, fallback)
 
 
 def stream_text_chunks(text: str) -> Iterator[str]:
@@ -116,3 +135,12 @@ def stream_assistant_reply(
         return
 
     yield from chunks
+
+
+def finalize_assistant_reply(
+    reply: str,
+    *,
+    state: ConversationState,
+    fallback: str,
+) -> str:
+    return sanitize_assistant_reply(reply, state, fallback)

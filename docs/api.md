@@ -41,6 +41,7 @@ Full session snapshot for UI refresh.
 | `status` | string | `active` or `completed` |
 | `intake` | object | Full structured intake JSON |
 | `completion_percent` | int | 0–100 required-field completion |
+| `missing_fields` | array | Required intake field keys still empty |
 | `messages` | array | `{ role, content, created_at }` |
 | `matches` | array | Provider match explanations |
 | `care_recommendation` | object? | Primary care type + rationale |
@@ -119,6 +120,21 @@ Validate consent and mark referral `mock_complete`. Requires `consent.consent_to
 
 Configured via `CORS_ORIGINS` in `.env`. Default includes both `localhost` and `127.0.0.1` on port 5173.
 
+## Operator
+
+### `GET /operator/sessions/{session_id}`
+
+Internal operator view: lead score, transcript, match referral economics, and referral status.
+
+| Field | Description |
+|-------|-------------|
+| `lead_score` | 0–100 lead quality score |
+| `lead_category` | `highly_qualified`, `qualified`, `needs_follow_up`, or `incomplete_or_exploratory` |
+| `lead_breakdown` | Points by signal (identity, care needs, budget, etc.) |
+| `transcript` | Full message history |
+| `matches[].estimated_referral_value` | Internal referral bounty (operator-only) |
+| `referral.estimated_referral_value` | Bounty for selected provider, if any |
+
 ## Demo
 
 ### `GET /demo/script`
@@ -134,6 +150,5 @@ Terminal walkthrough (no server required):
 ## Not yet implemented
 
 - Twilio webhooks (`POST /twilio/voice`, `WS /twilio/media`)
-- Operator dashboard endpoints
 
 See [roadmap.md](roadmap.md).
