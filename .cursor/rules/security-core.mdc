@@ -1,11 +1,11 @@
 ---
-description: Core security rules for elder-care agent (public repo, sensitive intake data)
+description: Core security rules for Florence (public repo, sensitive intake data)
 alwaysApply: true
 ---
 
-# Security Core
+# Security Core — Florence
 
-This is a **public** repo handling elder-care intake data. Treat every commit as permanently exposed.
+This is a **public** repo for **Florence**, handling elder-care intake data. Treat every commit as permanently exposed.
 
 ## Secrets
 

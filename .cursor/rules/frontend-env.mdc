@@ -1,12 +1,18 @@
 ---
-description: Frontend environment and client-side data security
+description: Frontend environment, testing, and client-side data security
 globs: frontend/**/*.{ts,tsx}
 alwaysApply: false
 ---
 
-# Frontend Security
+# Frontend
 
-## Environment variables
+## Test-driven development
+
+- Write tests in `*.test.ts` / `*.test.tsx` **before** implementing components and hooks.
+- Use Vitest + React Testing Library for behavior-focused tests.
+- Mock API calls — do not hit the real backend in unit tests.
+
+## Environment and security
 
 - Only expose `VITE_*` variables to the client bundle.
 - Never put Twilio tokens, database URLs, or backend secrets in frontend code or `.env` files consumed by Vite.

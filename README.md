@@ -1,16 +1,18 @@
-# Elder Care Navigation Agent
+# Florence
 
-Hackathon MVP: a humanistic elder-care navigation agent that guides families through intake, recommends care types, matches providers, and submits referrals.
+Florence is a humanistic elder-care navigation agent that guides families through intake, recommends care types, matches providers, and submits referrals.
+
+Hackathon MVP for Arya Health.
 
 ## Status
 
-- **Step Zero:** Security foundation (this repo)
+- **Step Zero:** Security foundation — complete
 - **Milestone 1:** Web app (text + browser voice) — not yet started
 - **Milestone 2:** Twilio telephony — not yet started
 
 ## Documentation
 
-- [Product handoff spec](elder-care-voice-agent-cursor-handoff.md)
+- [Product handoff spec](docs/handoff.md)
 - [Security policy](SECURITY.md)
 - [Agent instructions](AGENTS.md)
 
@@ -38,6 +40,16 @@ pre-commit run --all-files
 cp .env.example .env
 # Edit .env with local values — never commit .env
 ```
+
+## Testing (TDD required)
+
+This project uses **test-driven development**. Write failing tests before implementation.
+
+```bash
+./scripts/run-tests.sh   # runs backend pytest and/or frontend vitest when configured
+```
+
+Pre-commit hooks run the test gate on every commit once test suites exist. See [AGENTS.md](AGENTS.md) and `.cursor/rules/test-driven-development.mdc`.
 
 ## Security
 

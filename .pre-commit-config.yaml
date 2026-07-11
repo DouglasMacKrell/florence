@@ -13,3 +13,12 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
         args: [--maxkb=500]
+
+  - repo: local
+    hooks:
+      - id: run-tests
+        name: run test suites (TDD gate)
+        entry: scripts/run-tests.sh
+        language: system
+        pass_filenames: false
+        always_run: true

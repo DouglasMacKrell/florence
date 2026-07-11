@@ -1,8 +1,8 @@
-# Elder Care Voice Agent — Cursor Handoff
+# Florence — Product Handoff
 
 ## 1. Project Summary
 
-Build a humanistic, phone-based voice agent that acts as a first point of contact for families and individuals seeking elder care.
+Build **Florence**, a humanistic care-navigation agent that acts as a first point of contact for families and individuals seeking elder care.
 
 The agent should gently guide callers through a structured onboarding conversation, collect the information required to understand their care needs, and produce a ranked list of matching elder-care providers.
 
@@ -205,7 +205,7 @@ For a hackathon, optimize for reliability and demonstrability rather than produc
 ## 8. Suggested Repository Structure
 
 ```text
-elder-care-agent/
+florence/
 ├── README.md
 ├── .env.example
 ├── pyproject.toml
@@ -1135,7 +1135,7 @@ STT_MODEL=
 TTS_MODEL=
 TTS_VOICE=
 
-DATABASE_URL=sqlite:///./elder_care.db
+DATABASE_URL=sqlite:///./florence.db
 TRANSCRIPT_RETENTION_DAYS=7
 ENABLE_AUDIO_RECORDING=false
 ENABLE_REFERRAL_SCORING=true

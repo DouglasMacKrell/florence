@@ -4,9 +4,15 @@ globs: backend/**/*.py
 alwaysApply: false
 ---
 
-# Python Backend Security
+# Python Backend
 
-## Configuration
+## Test-driven development
+
+- Write tests in `backend/tests/` **before** implementing `backend/app/` logic.
+- Use `pytest`, FastAPI `TestClient`, and fixtures from `conftest.py`.
+- Mock Ollama and external services — unit tests must not require running services.
+
+## Security and configuration
 
 - Load settings via `pydantic-settings` from environment variables.
 - Never hardcode `DATABASE_URL`, Twilio credentials, or API keys.

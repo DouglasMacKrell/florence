@@ -1,8 +1,8 @@
-# Security Policy
+# Security Policy — Florence
 
 ## Hackathon disclaimer
 
-This project is a **hackathon MVP** for elder-care navigation. It is **not** production-ready and **does not** claim HIPAA compliance. Demo scenarios use **synthetic data only**.
+Florence is a **hackathon MVP** for elder-care navigation. It is **not** production-ready and **does not** claim HIPAA compliance. Demo scenarios use **synthetic data only**.
 
 ## What we do not store in git
 
