@@ -1,0 +1,24 @@
+title = "elder-care-agent gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow placeholder values in committed templates"
+paths = [
+  '''\.env\.example$''',
+  '''SECURITY\.md$''',
+  '''\.cursor/rules/''',
+]
+
+[[rules]]
+id = "twilio-account-sid"
+description = "Twilio Account SID"
+regex = '''(?i)twilio.*account.*sid.*=.*AC[a-z0-9]{32}'''
+tags = ["twilio", "secret"]
+
+[[rules]]
+id = "twilio-auth-token"
+description = "Twilio Auth Token"
+regex = '''(?i)twilio.*auth.*token.*=.*[a-f0-9]{32}'''
+tags = ["twilio", "secret"]

@@ -1,0 +1,35 @@
+---
+description: Python backend security conventions
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Python Backend Security
+
+## Configuration
+
+- Load settings via `pydantic-settings` from environment variables.
+- Never hardcode `DATABASE_URL`, Twilio credentials, or API keys.
+
+```python
+# BAD
+DATABASE_URL = "postgresql://user:secretpass@localhost/db"
+
+# GOOD
+from app.config import settings
+engine = create_engine(settings.database_url)
+```
+
+## Logging and redaction
+
+- When `REDACT_LOGS` is enabled, redact `phone`, `email`, `name`, and intake fields before logging.
+- Use `backend/app/security/redaction.py` helpers once implemented — do not log raw `structured_json`.
+
+## Database
+
+- Use SQLAlchemy ORM or parameterized queries only — no string-interpolated SQL.
+
+## API
+
+- Restrict CORS to origins from the `CORS_ORIGINS` env var.
+- Validate and sanitize all user input via Pydantic models.

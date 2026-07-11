@@ -1,0 +1,29 @@
+---
+description: Frontend environment and client-side data security
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Security
+
+## Environment variables
+
+- Only expose `VITE_*` variables to the client bundle.
+- Never put Twilio tokens, database URLs, or backend secrets in frontend code or `.env` files consumed by Vite.
+
+```typescript
+// BAD — secret in client
+const API_KEY = "sk-live-...";
+
+// GOOD — public API base only
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+```
+
+## Client-side storage
+
+- Do not persist intake data, transcripts, or PII in `localStorage` or `sessionStorage`.
+- Server (Postgres) is the source of truth for session and intake state.
+
+## Display
+
+- Do not expose internal referral bounty amounts or scoring weights in the UI.

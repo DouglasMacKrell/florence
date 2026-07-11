@@ -1,0 +1,38 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Local data (may contain intake/transcripts)
+*.db
+*.sqlite
+postgres-data/
+backend/data/transcripts/
+backend/data/sessions/
+logs/
+*.log
+
+# Python / Node
+__pycache__/
+.venv/
+venv/
+node_modules/
+dist/
+build/
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# IDE / OS
+.DS_Store
+.idea/
+*.swp
+.vscode/
+
+# Docker local volumes
+docker-data/
