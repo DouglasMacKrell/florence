@@ -93,3 +93,16 @@ def advance_state(current: ConversationState, intake: IntakeRecord) -> Conversat
         return current
 
     return current
+
+
+def advance_through_satisfied_states(
+    current: ConversationState,
+    intake: IntakeRecord,
+) -> ConversationState:
+    state = current
+    for _ in range(len(ORDERED_STATES)):
+        next_state = advance_state(state, intake)
+        if next_state == state:
+            return state
+        state = next_state
+    return state

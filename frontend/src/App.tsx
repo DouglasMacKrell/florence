@@ -124,25 +124,40 @@ function App() {
     }
     setMessages((current) => [...current, { role: "user", content }]);
     setMessages((current) => [...current, { role: "assistant", content: "" }]);
-    const reply = await sendMessageStream(sessionId, content, (token) => {
+    try {
+      const reply = await sendMessageStream(sessionId, content, (token) => {
+        setMessages((current) => {
+          const next = [...current];
+          const last = next[next.length - 1];
+          if (last?.role === "assistant") {
+            next[next.length - 1] = { ...last, content: last.content + token };
+          }
+          return next;
+        });
+      });
+      setMatches(reply.matches ?? []);
+      setCareRecommendation(reply.care_recommendation);
+      await refreshSession(sessionId);
+      if (shouldSpeakAssistant) {
+        abortListening();
+        await enqueueSpeech("assistant", reply.content);
+      }
+      if (micEnabledRef.current && !demoRunning) {
+        void scheduleMicListen(shouldSpeakAssistant ? 250 : 0);
+      }
+    } catch (err) {
       setMessages((current) => {
         const next = [...current];
-        const last = next[next.length - 1];
-        if (last?.role === "assistant") {
-          next[next.length - 1] = { ...last, content: last.content + token };
+        if (next.at(-1)?.role === "assistant" && !next.at(-1)?.content) {
+          next.pop();
+        }
+        if (next.at(-1)?.role === "user" && next.at(-1)?.content === content) {
+          next.pop();
         }
         return next;
       });
-    });
-    setMatches(reply.matches ?? []);
-    setCareRecommendation(reply.care_recommendation);
-    await refreshSession(sessionId);
-    if (shouldSpeakAssistant) {
-      abortListening();
-      await enqueueSpeech("assistant", reply.content);
-    }
-    if (micEnabledRef.current && !demoRunning) {
-      void scheduleMicListen(shouldSpeakAssistant ? 250 : 0);
+      setInput(content);
+      throw err;
     }
   }
 

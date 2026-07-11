@@ -7,6 +7,13 @@ def test_should_ignore_filler_transcripts() -> None:
     assert should_ignore_transcript("  ")
 
 
+def test_should_accept_yes_no_and_partial_zip() -> None:
+    assert not should_ignore_transcript("Yes.")
+    assert not should_ignore_transcript("No.")
+    assert not should_ignore_transcript("1101.")
+    assert not should_ignore_transcript("347.")
+
+
 def test_should_accept_real_utterances() -> None:
     assert not should_ignore_transcript("Hi my name is Doug and I need help for my father.")
     assert not should_ignore_transcript("347 495 1122")

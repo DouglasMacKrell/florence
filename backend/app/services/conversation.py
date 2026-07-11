@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from app.agent.care_recommender import recommend_care_types
-from app.agent.state_machine import ConversationState, advance_state
+from app.agent.state_machine import (
+    ConversationState,
+    advance_state,
+    advance_through_satisfied_states,
+)
 from app.config import get_settings
 from app.db.tables import (
     CareRecommendationRecordORM,
@@ -120,12 +124,23 @@ def process_user_message(
     *,
     scripted_reply: bool = False,
 ) -> AssistantTurn:
-    prepared = prepare_user_message_turn(db, session_id, content)
+    prepared = prepare_user_message_turn(
+        db,
+        session_id,
+        content,
+        rules_only_extraction=scripted_reply,
+    )
     reply = _generate_reply(prepared, scripted_reply=scripted_reply)
     return complete_user_message_turn(db, prepared, reply)
 
 
-def prepare_user_message_turn(db: Session, session_id: str, content: str) -> PreparedTurn:
+def prepare_user_message_turn(
+    db: Session,
+    session_id: str,
+    content: str,
+    *,
+    rules_only_extraction: bool = False,
+) -> PreparedTurn:
     session = db.get(SessionRecord, session_id)
     if session is None:
         raise ValueError("Session not found")
@@ -144,9 +159,18 @@ def prepare_user_message_turn(db: Session, session_id: str, content: str) -> Pre
         intake_orm.current_state = session.current_state
         current_state = ConversationStateEnum.DISCLOSURE_AND_CONSENT
 
-    _extract_intake_fields(intake, content, current_state, _message_history(session))
+    _extract_intake_fields(
+        intake,
+        content,
+        current_state,
+        _message_history(session),
+        rules_only=rules_only_extraction,
+    )
 
-    next_state = advance_state(current_state, intake)
+    if rules_only_extraction:
+        next_state = advance_through_satisfied_states(current_state, intake)
+    else:
+        next_state = advance_state(current_state, intake)
     if next_state != current_state:
         session.current_state = next_state.value
         intake_orm.current_state = next_state.value
@@ -267,7 +291,13 @@ def _extract_intake_fields(
     content: str,
     state: ConversationStateEnum,
     history: list[dict[str, str]],
+    *,
+    rules_only: bool = False,
 ) -> None:
+    if rules_only:
+        extract_with_rules(intake, content, state)
+        return
+
     settings = get_settings()
     if settings.enable_ollama:
         signals = extract_with_ollama(intake, content, state, history)

@@ -177,10 +177,7 @@ class IntakeRecord(BaseModel):
         return bool(
             self.location_preferences.postal_code
             or self.care_recipient.current_location.postal_code
-            or (
-                self.location_preferences.preferred_city
-                and self.location_preferences.preferred_state
-            )
+            or self.location_preferences.preferred_city
         )
 
     def _has_care_needs(self) -> bool:

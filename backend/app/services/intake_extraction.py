@@ -118,6 +118,9 @@ def _apply_simple_extraction(intake: IntakeRecord, content: str, state: Conversa
             intake.location_preferences.postal_code = zip_digits[:5]
         if not intake.location_preferences.preferred_city:
             intake.location_preferences.preferred_city = content.strip()
+        if "new york" in lowered:
+            intake.location_preferences.preferred_city = "New York City"
+            intake.location_preferences.preferred_state = "NY"
 
     if state == ConversationState.COLLECT_FINANCIAL_REQUIREMENTS:
         numbers = [int(token) for token in content.replace(",", "").split() if token.isdigit()]
@@ -130,6 +133,11 @@ def _apply_simple_extraction(intake: IntakeRecord, content: str, state: Conversa
         intake.caller.relationship_to_care_recipient = (
             "daughter" if "daughter" in lowered else "son"
         )
+    elif (
+        any(term in lowered for term in ("father", "dad", "mother", "mom", "parent"))
+        and not intake.caller.relationship_to_care_recipient
+    ):
+        intake.caller.relationship_to_care_recipient = "family member"
 
     if "memory" in lowered:
         intake.care_needs.memory_concerns = True

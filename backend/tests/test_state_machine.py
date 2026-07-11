@@ -1,4 +1,9 @@
-from app.agent.state_machine import ConversationState, advance_state, can_transition
+from app.agent.state_machine import (
+    ConversationState,
+    advance_state,
+    advance_through_satisfied_states,
+    can_transition,
+)
 from app.models.intake import IntakeRecord
 
 
@@ -19,6 +24,14 @@ def test_disclosure_requires_consent_before_advancing() -> None:
         advance_state(ConversationState.DISCLOSURE_AND_CONSENT, intake)
         == ConversationState.UNDERSTAND_REASON_FOR_CALL
     )
+
+
+def test_advance_through_satisfied_states_stops_at_first_missing_stage() -> None:
+    intake = IntakeRecord()
+    intake.consent.consent_to_store_information = True
+
+    state = advance_through_satisfied_states(ConversationState.DISCLOSURE_AND_CONSENT, intake)
+    assert state == ConversationState.UNDERSTAND_REASON_FOR_CALL
 
 
 def test_match_providers_requires_required_fields() -> None:
