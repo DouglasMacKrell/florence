@@ -1,3 +1,5 @@
+![Florence — care navigation with human connection](assets/florence-header.png)
+
 # Florence
 
 Florence is a humanistic elder-care navigation agent that guides families through intake, recommends care types, matches providers, and submits referrals — by **web chat** or **phone**.
