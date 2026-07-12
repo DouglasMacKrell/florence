@@ -1,6 +1,6 @@
 # Agent Instructions — Florence
 
-Florence is an elder-care navigation MVP — web-first intake, care-type recommendation, provider matching, and referral flow.
+Florence is an elder-care navigation MVP — web-first intake, care-type recommendation, provider matching, and referral flow. **Grand Prize winner** at [AI Healthcare Hack NYC](https://luma.com/arya-health-hack) (Jul 2026) — see [docs/portfolio.md](docs/portfolio.md).
 
 ## Before making changes
 

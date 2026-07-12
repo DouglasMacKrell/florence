@@ -1,5 +1,7 @@
 # Quick Start
 
+**Grand Prize** — [AI Healthcare Hack NYC](https://luma.com/arya-health-hack) · [Devpost](https://devpost.com/software/florence-2026)
+
 Get Florence running locally in two paths depending on who you are.
 
 | I want to… | Go to |

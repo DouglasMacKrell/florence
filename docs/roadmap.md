@@ -1,6 +1,18 @@
 # Roadmap & Status
 
-Last updated: Jul 2026 (Arya Health hackathon)
+Last updated: Jul 2026
+
+## Hackathon outcome ✅
+
+**Grand Prize** — [AI Healthcare Hack NYC](https://luma.com/arya-health-hack) by Arya Health & Twilio AI Startup Searchlight.
+
+| | |
+|---|---|
+| **Devpost** | [florence-2026](https://devpost.com/software/florence-2026) |
+| **Team** | Morrison Chang, Douglas MacKrell, Andrew Lai |
+| **Prize** | $500 Twilio credit + Arya Health engineering interview |
+
+Shipped in a one-day sprint: web intake, Twilio telephony, deterministic matching, operator dashboard, 71 tests.
 
 ## Milestone summary
 
@@ -8,7 +20,7 @@ Last updated: Jul 2026 (Arya Health hackathon)
 |-------|-------|--------|
 | **Step Zero** | Security, hooks, gitignore, docs skeleton | ✅ Complete |
 | **M1 — Web MVP** | React UI, FastAPI, Postgres, Ollama, matching, mock referral | ✅ Demo-ready |
-| **M2 — Telephony** | Twilio + Pipecat, reuse conversation engine | 🟡 Functional locally |
+| **M2 — Telephony** | Twilio + Pipecat, reuse conversation engine | ✅ Demo-ready locally |
 
 ## Step Zero ✅
 
@@ -37,7 +49,7 @@ Last updated: Jul 2026 (Arya Health hackathon)
 - Alembic migrations (opt-in via `USE_ALEMBIC=true`)
 - **71 backend tests**, frontend lint/build
 
-## M2 — Telephony 🟡
+## M2 — Telephony ✅
 
 From [handoff.md Phase 3](handoff.md#phase-3-twilio-integration):
 
@@ -47,7 +59,8 @@ From [handoff.md Phase 3](handoff.md#phase-3-twilio-integration):
 - [x] Scripted stage prompts (`TELEPHONY_SCRIPTED_REPLIES=true`) for stable demos
 - [x] Rules-only extraction on phone (no Ollama latency on live calls)
 - [x] Turn locking, echo filtering, transcript filler suppression
-- [ ] Polished end-to-end demo on a stable public URL (production deploy vs ngrok)
+- [x] Live demo at hackathon via ngrok + Twilio
+- [ ] Production deploy with stable public URL (post-hackathon)
 - [ ] Sign-off on graceful disconnect edge cases
 
 **Design constraint:** Reuses `services/conversation.py` — intake logic is not forked for phone.
@@ -64,8 +77,10 @@ Setup: [telephony.md](telephony.md)
 | 1–3 provider cards with explanations | ✅ |
 | User selects provider + mock referral | ✅ |
 | Safety scenario routes correctly | ✅ |
-| Callable Twilio number (local + tunnel) | 🟡 |
+| Callable Twilio number (live demo) | ✅ |
 | Operator dashboard | ✅ |
+
+**Result:** Grand Prize at AI Healthcare Hack NYC (Jul 2026).
 
 ## Promotion criteria (main branch)
 

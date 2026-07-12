@@ -1,6 +1,11 @@
 # Florence Documentation
 
-Florence is a humanistic elder-care navigation agent — a hackathon MVP built for **Arya Health**. It guides families through structured intake, recommends care types, matches providers, and submits mock referrals — by **web chat** or **phone**.
+Florence is a humanistic elder-care navigation agent — **Grand Prize winner** at [AI Healthcare Hack NYC](https://luma.com/arya-health-hack) by Arya Health & Twilio (Jul 2026). It guides families through structured intake, recommends care types, matches providers, and submits mock referrals — by **web chat** or **phone**.
+
+| | |
+|---|---|
+| **Devpost** | [florence-2026](https://devpost.com/software/florence-2026) |
+| **Team** | Morrison Chang, Douglas MacKrell, Andrew Lai |
 
 This folder is the **portfolio and engineering reference** for the project.
 
@@ -43,11 +48,13 @@ This folder is the **portfolio and engineering reference** for the project.
 
 ## Quick status (Jul 2026)
 
+**Hackathon:** ✅ Grand Prize — [AI Healthcare Hack NYC](https://luma.com/arya-health-hack) · [Devpost](https://devpost.com/software/florence-2026)
+
 | Milestone | Status |
 |-----------|--------|
 | Step Zero — security foundation | ✅ Complete |
 | M1 — Web app + backend core | ✅ Demo-ready |
-| M2 — Twilio telephony | 🟡 Functional locally (tunnel + Twilio creds) |
+| M2 — Twilio telephony | ✅ Demo-ready locally (tunnel + Twilio creds) |
 
 See [roadmap.md](roadmap.md) for detail.
 

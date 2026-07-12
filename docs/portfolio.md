@@ -1,10 +1,21 @@
 # Portfolio Overview — Florence
 
+## Recognition
+
+**Grand Prize winner** — [AI Healthcare Hack NYC](https://luma.com/arya-health-hack) by Arya Health & [Twilio AI Startup Searchlight](https://luma.com/arya-health-hack) (Jul 2026).
+
+| | |
+|---|---|
+| **Prize** | $500 Twilio credit + Arya Health engineering interview |
+| **Devpost** | [florence-2026](https://devpost.com/software/florence-2026) |
+| **Team** | Morrison Chang, Douglas MacKrell, Andrew Lai |
+| **GitHub** | [DouglasMacKrell/florence](https://github.com/DouglasMacKrell/florence) |
+
+Judges evaluated production-ready voice/text agents with domain knowledge, guardrails, security, and scalability — with Twilio telephony required for prize eligibility. Florence shipped a full web + phone intake flow in a single-day sprint.
+
 ## Elevator pitch
 
 **Florence** turns a confusing, emotional first contact about elder care into a structured intake, a care-type recommendation, ranked provider matches, and a clear next step — with **local-only AI** so sensitive family conversations never leave the machine.
-
-Built for the **Arya Health hackathon** (Jul 2026).
 
 ## Problem
 
@@ -49,7 +60,7 @@ The **state machine owns workflow**; Ollama assists with natural phrasing and fi
 4. Select provider → mock referral recorded
 5. Optional: open operator view for lead score and referral economics
 
-### Phone demo (~3 min, optional)
+### Phone demo (~3 min)
 
 1. Configure Twilio + [ngrok tunnel](telephony.md) to local backend
 2. Dial the Florence number (shown in the web header)
@@ -108,13 +119,14 @@ flowchart TB
     Match --> PG
 ```
 
-## What makes this portfolio-worthy
+## What made this a winning submission
 
 - **Humanistic product framing** — built around real elder-care navigation stages, not a generic chatbot
+- **Twilio telephony** — live callable demo via Media Streams + Pipecat (required for sponsor prizes)
 - **Security-first repo** — gitleaks, redaction-ready logging, public-repo discipline from day zero
 - **Explainable matching** — every provider card includes strengths and concerns; referral economics separated from care-fit scoring
 - **Operator view** — lead score, transcript, and mock referral bounty for demo storytelling
-- **Web + phone** — same engine, different transport; phone demo via Twilio without forking business logic
+- **One engine, two channels** — web and phone share intake logic; transport is swappable
 
 ## Constraints (intentional)
 
@@ -125,6 +137,8 @@ flowchart TB
 
 ## Links
 
+- [Devpost submission](https://devpost.com/software/florence-2026)
+- [Hackathon event (Luma)](https://luma.com/arya-health-hack)
 - [Quick start](quick-start.md) — run locally in 5–15 minutes
 - [Telephony setup](telephony.md) — Twilio + ngrok
 - [Architecture](architecture.md) — system design
