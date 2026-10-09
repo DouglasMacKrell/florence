@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.services.call_sessions import update_call_status
 from app.services.twilio_stream import parse_twilio_stream_start_message
-from app.voice.florence_processor import build_florence_processor, telephony_pipeline_available
+from app.voice.availability import telephony_pipeline_available
+from app.voice.florence_processor import build_florence_processor
 
 
 def _telephony_vad_analyzer():

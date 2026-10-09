@@ -8,8 +8,7 @@ from app.db.database import get_db_session, get_session_factory
 from app.services.call_sessions import start_inbound_call, update_call_status
 from app.services.twilio_security import validate_twilio_request
 from app.services.twilio_twiml import build_error_twiml, build_stream_twiml
-from app.voice.florence_processor import telephony_pipeline_available
-from app.voice.pipeline import handle_twilio_media_stream
+from app.voice.availability import telephony_pipeline_available
 
 router = APIRouter(prefix="/twilio", tags=["twilio"])
 DbSession = Annotated[Session, Depends(get_db_session)]
@@ -82,6 +81,8 @@ async def twilio_media_stream(
             reason="Install telephony extras: pip install '.[telephony]'",
         )
         return
+
+    from app.voice.pipeline import handle_twilio_media_stream
 
     await handle_twilio_media_stream(
         websocket,

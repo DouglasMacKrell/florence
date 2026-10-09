@@ -10,15 +10,6 @@ from app.services.conversation import process_user_message
 from app.voice.telephony_turns import shorten_for_phone, should_ignore_transcript
 
 
-def telephony_pipeline_available() -> bool:
-    try:
-        import pipecat  # noqa: F401
-        import twilio  # noqa: F401
-    except ImportError:
-        return False
-    return True
-
-
 def build_florence_processor(
     session_id: str,
     session_factory: Callable[[], Session],
