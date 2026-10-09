@@ -6,7 +6,7 @@ from app.agent.prompts import EXTRACTION_PROMPT
 from app.agent.safety import SafetySignals, detect_safety_signals
 from app.models.enums import ConversationState
 from app.models.intake import IntakeRecord
-from app.services.ollama import OllamaClient, OllamaError
+from app.services.llm_client import LlmClient, LlmError, get_llm_client
 
 
 def apply_extraction_patch(intake: IntakeRecord, patch: dict[str, Any]) -> None:
@@ -179,9 +179,9 @@ def extract_with_ollama(
     content: str,
     state: ConversationState,
     history: list[dict[str, str]],
-    client: OllamaClient | None = None,
+    client: LlmClient | None = None,
 ) -> SafetySignals | None:
-    ollama = client or OllamaClient()
+    llm = client or get_llm_client()
     messages = [
         {"role": "system", "content": EXTRACTION_PROMPT},
         {
@@ -197,8 +197,8 @@ def extract_with_ollama(
         },
     ]
     try:
-        patch = ollama.chat_json(messages)
-    except OllamaError:
+        patch = llm.chat_json(messages)
+    except LlmError:
         return None
 
     apply_extraction_patch(intake, patch)

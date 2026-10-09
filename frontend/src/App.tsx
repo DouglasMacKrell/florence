@@ -23,6 +23,7 @@ import {
 } from "./speech";
 import { abortListening, isMicSupported, listenForSpeech, requestMicAccess } from "./mic";
 import { contactPhoneDisplay, contactPhoneTelUri } from "./contact";
+import { isPublicDemoMode } from "./demoMode";
 import "./App.css";
 
 const REQUIRED_INTAKE_FIELDS = [
@@ -61,6 +62,7 @@ function App() {
 
   const speechSupported = useMemo(() => isSpeechSupported(), []);
   const micSupported = useMemo(() => isMicSupported(), []);
+  const publicDemo = useMemo(() => isPublicDemoMode(), []);
 
   useEffect(() => {
     micEnabledRef.current = micEnabled;
@@ -100,12 +102,14 @@ function App() {
         : detail.missing_fields,
     );
     setReferralStatus(detail.referral?.status ?? null);
-    if (detail.completion_percent > 0) {
+    if (!publicDemo && detail.completion_percent > 0) {
       try {
         setOperatorView(await getOperatorSession(id));
       } catch {
         setOperatorView(null);
       }
+    } else {
+      setOperatorView(null);
     }
   }
 
@@ -386,10 +390,12 @@ function App() {
               <p className="brand-lead">
                 A compassionate guide for families exploring elder-care options — by text or voice.
               </p>
-              <p className="contact-phone">
-                Call Florence{" "}
-                <a href={contactPhoneTelUri()}>{contactPhoneDisplay()}</a>
-              </p>
+              {!publicDemo ? (
+                <p className="contact-phone">
+                  Call Florence{" "}
+                  <a href={contactPhoneTelUri()}>{contactPhoneDisplay()}</a>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -445,6 +451,15 @@ function App() {
           </div>
         </div>
       </header>
+
+      {publicDemo ? (
+        <div className="demo-banner" role="note">
+          <strong>Demonstration only.</strong> Florence is a fictional portfolio demo—not medical
+          advice, diagnosis, or emergency services. Please do not enter real personal or medical
+          information. Provider referrals and follow-up actions shown here are{" "}
+          <strong>simulated</strong>.
+        </div>
+      ) : null}
 
       <main className="layout">
         <section className="chat-panel">
@@ -510,7 +525,7 @@ function App() {
             </ul>
           </section>
 
-          {operatorView ? (
+          {!publicDemo && operatorView ? (
             <section className="info-card operator-card">
               <h2>Operator view</h2>
               <p className="operator-score">
@@ -549,6 +564,12 @@ function App() {
           {matches.length > 0 ? (
             <section className="info-card">
               <h2>Provider matches</h2>
+              {publicDemo ? (
+                <p className="demo-simulation-note">
+                  Selecting a provider records a <strong>simulated</strong> referral for demo
+                  purposes only—no real provider is contacted.
+                </p>
+              ) : null}
               <div className="provider-list">
                 {matches.map((match) => (
                   <article key={match.provider_id} className="provider-card">
@@ -572,8 +593,15 @@ function App() {
 
           {referralStatus ? (
             <section className="info-card success">
-              <h2>Referral status</h2>
-              <p>{referralStatus}</p>
+              <h2>{publicDemo ? "Simulated referral" : "Referral status"}</h2>
+              {publicDemo ? (
+                <p>
+                  Demo complete ({referralStatus.replaceAll("_", " ")}). No real referral or
+                  notification was sent.
+                </p>
+              ) : (
+                <p>{referralStatus}</p>
+              )}
             </section>
           ) : null}
         </aside>

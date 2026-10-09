@@ -9,14 +9,19 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     database_url: str = "postgresql://florence:florence@localhost:5432/florence"
+    inference_provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
+    groq_api_key: str = ""
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_model: str = "llama-3.1-8b-instant"
     cors_origins: str = "http://localhost:5173"
     redact_logs: bool = True
     enable_transcript_persistence: bool = True
     transcript_retention_days: int = 7
     enable_ollama: bool = True
     ollama_max_retries: int = 2
+    llm_max_retries: int = 2
     use_alembic: bool = False
     enable_telephony: bool = False
     twilio_account_sid: str = ""
@@ -27,9 +32,13 @@ class Settings(BaseSettings):
     piper_voice_id: str = "en_US-lessac-medium"
     whisper_model: str = "Systran/faster-distil-whisper-medium.en"
     telephony_scripted_replies: bool = True
+    public_demo_mode: bool = False
+    demo_max_messages_per_session: int = 50
 
     @property
     def telephony_configured(self) -> bool:
+        if self.public_demo_mode:
+            return False
         return bool(self.enable_telephony and self.public_websocket_url)
 
     @property

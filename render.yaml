@@ -1,0 +1,44 @@
+# Render Blueprint — Florence public demo API
+# Connect this repo in Render Dashboard → New → Blueprint → apply this file.
+# Set secret env vars in the Render dashboard (never commit them).
+
+services:
+  - type: web
+    name: florence-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -e .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: REDACT_LOGS
+        value: "true"
+      - key: INFERENCE_PROVIDER
+        value: groq
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: ENABLE_OLLAMA
+        value: "true"
+      - key: PUBLIC_DEMO_MODE
+        value: "true"
+      - key: DEMO_MAX_MESSAGES_PER_SESSION
+        value: "20"
+      - key: ENABLE_TELEPHONY
+        value: "false"
+      - key: USE_ALEMBIC
+        value: "false"
+      # Secrets — set values in Render UI after apply:
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Set after Netlify site URL is known (exact origin, no trailing slash):
+      - key: CORS_ORIGINS
+        sync: false

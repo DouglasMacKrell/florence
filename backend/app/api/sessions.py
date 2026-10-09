@@ -12,6 +12,7 @@ from app.api.schemas import (
     SendMessageResponse,
     SessionDetailResponse,
 )
+from app.config import Settings, get_settings
 from app.db.database import get_db_session
 from app.db.tables import (
     CareRecommendationRecordORM,
@@ -30,11 +31,13 @@ from app.services.conversation import (
     select_provider,
     stream_user_message_tokens,
 )
+from app.services.demo_limits import enforce_demo_session_message_cap
 from app.services.provider_loader import load_providers_from_seed
 from app.services.response_generation import finalize_assistant_reply
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 DbSession = Annotated[Session, Depends(get_db_session)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 @router.post("", response_model=CreateSessionResponse)
@@ -104,7 +107,9 @@ def send_message(
     session_id: str,
     payload: SendMessageRequest,
     db: DbSession,
+    settings: SettingsDep,
 ) -> SendMessageResponse:
+    enforce_demo_session_message_cap(db, session_id, settings)
     try:
         turn = process_user_message(db, session_id, payload.content)
     except ValueError as exc:
@@ -127,7 +132,9 @@ def stream_message(
     session_id: str,
     payload: SendMessageRequest,
     db: DbSession,
+    settings: SettingsDep,
 ) -> StreamingResponse:
+    enforce_demo_session_message_cap(db, session_id, settings)
     try:
         prepared = prepare_user_message_turn(db, session_id, payload.content)
     except ValueError as exc:

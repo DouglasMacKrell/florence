@@ -6,7 +6,7 @@ from app.agent.prompts import RESPONSE_PROMPT, SYSTEM_PROMPT, state_instruction
 from app.config import get_settings
 from app.models.enums import ConversationState
 from app.models.intake import IntakeRecord
-from app.services.ollama import OllamaClient, OllamaError
+from app.services.llm_client import LlmClient, LlmError, get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def generate_assistant_reply(
     state: ConversationState,
     history: list[dict[str, str]],
     fallback: str,
-    client: OllamaClient | None = None,
+    client: LlmClient | None = None,
     scripted_only: bool = False,
 ) -> str:
     if intake.safety.possible_emergency or intake.safety.immediate_danger:
@@ -68,16 +68,16 @@ def generate_assistant_reply(
     if not settings.enable_ollama:
         return fallback
 
-    ollama = client or OllamaClient()
-    if not ollama.is_available():
-        logger.info("Ollama unavailable; using scripted fallback reply")
+    llm = client or get_llm_client()
+    if not llm.is_available():
+        logger.info("LLM unavailable; using scripted fallback reply")
         return fallback
 
     messages = _reply_messages(intake=intake, state=state, history=history, fallback=fallback)
     try:
-        reply = ollama.chat(messages).strip()
-    except OllamaError:
-        logger.warning("Ollama reply generation failed; using fallback")
+        reply = llm.chat(messages).strip()
+    except LlmError:
+        logger.warning("LLM reply generation failed; using fallback")
         return fallback
 
     return sanitize_assistant_reply(reply or fallback, state, fallback)
@@ -122,7 +122,7 @@ def stream_assistant_reply(
     state: ConversationState,
     history: list[dict[str, str]],
     fallback: str,
-    client: OllamaClient | None = None,
+    client: LlmClient | None = None,
 ) -> Iterator[str]:
     if intake.safety.possible_emergency or intake.safety.immediate_danger:
         yield from stream_text_chunks(EMERGENCY_REPLY)
@@ -133,17 +133,17 @@ def stream_assistant_reply(
         yield from stream_text_chunks(fallback)
         return
 
-    ollama = client or OllamaClient()
-    if not ollama.is_available():
-        logger.info("Ollama unavailable; streaming scripted fallback reply")
+    llm = client or get_llm_client()
+    if not llm.is_available():
+        logger.info("LLM unavailable; streaming scripted fallback reply")
         yield from stream_text_chunks(fallback)
         return
 
     messages = _reply_messages(intake=intake, state=state, history=history, fallback=fallback)
     try:
-        chunks = list(ollama.chat_stream(messages))
-    except OllamaError:
-        logger.warning("Ollama reply streaming failed; using fallback")
+        chunks = list(llm.chat_stream(messages))
+    except LlmError:
+        logger.warning("LLM reply streaming failed; using fallback")
         yield from stream_text_chunks(fallback)
         return
 

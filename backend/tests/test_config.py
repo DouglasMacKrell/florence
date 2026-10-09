@@ -16,3 +16,10 @@ def test_settings_enable_ollama_defaults_true(monkeypatch) -> None:
     monkeypatch.delenv("ENABLE_OLLAMA", raising=False)
     settings = Settings(_env_file=None)
     assert settings.enable_ollama is True
+
+
+def test_settings_inference_provider_defaults_ollama(monkeypatch) -> None:
+    monkeypatch.delenv("INFERENCE_PROVIDER", raising=False)
+    clear_settings_cache()
+    settings = Settings(_env_file=None)
+    assert settings.inference_provider == "ollama"
