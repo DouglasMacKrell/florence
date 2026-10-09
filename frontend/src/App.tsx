@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 
 import {
   confirmReferral,
@@ -267,8 +267,7 @@ function App() {
     await handleEnableMic();
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function submitComposerMessage() {
     if (!sessionId || !input.trim() || loading || demoRunning) {
       return;
     }
@@ -283,6 +282,19 @@ function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    await submitComposerMessage();
+  }
+
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    void submitComposerMessage();
   }
 
   async function handleRunDemo() {
@@ -488,6 +500,7 @@ function App() {
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
               placeholder="Describe the care situation or answer Florence's question..."
               rows={3}
             />

@@ -26,6 +26,7 @@ from app.services.intake_extraction import (
     extract_with_rules,
     is_affirmative_reply,
 )
+from app.services.intake_summary import build_intake_confirmation_message
 from app.services.provider_loader import list_provider_records
 from app.services.response_generation import (
     generate_assistant_reply,
@@ -90,7 +91,7 @@ STATE_PROMPTS = {
     ),
     ConversationState.CONFIRM_SUMMARY: (
         "Let me make sure I have this right. Does that summary sound accurate?"
-    ),
+    ),  # full text: build_intake_confirmation_message()
     ConversationState.MATCH_PROVIDERS: (
         "Based on what you shared, I found a few providers that may fit. I'll show them next."
     ),
@@ -193,9 +194,20 @@ def prepare_user_message_turn(
     intake_orm.structured_json = intake.model_dump()
     intake_orm.completion_percent = intake.completion_percent()
 
+    entered_confirm_summary = (
+        next_state == ConversationState.CONFIRM_SUMMARY
+        and current_state != ConversationState.CONFIRM_SUMMARY
+    )
+    at_confirm_summary = (
+        ConversationStateEnum(session.current_state) == ConversationStateEnum.CONFIRM_SUMMARY
+    )
+
     fallback = STATE_PROMPTS.get(
         ConversationStateEnum(session.current_state), "Thank you for sharing that."
     )
+    if entered_confirm_summary or at_confirm_summary:
+        fallback = build_intake_confirmation_message(intake)
+
     care_recommendation_data = None
     matches_data = None
     reply_override = None
@@ -236,6 +248,9 @@ def prepare_user_message_turn(
         )
 
     if follow_up_consent_captured and reply_override is None:
+        reply_override = fallback
+
+    if entered_confirm_summary and reply_override is None:
         reply_override = fallback
 
     return PreparedTurn(
