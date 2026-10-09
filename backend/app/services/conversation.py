@@ -21,7 +21,11 @@ from app.db.tables import (
 from app.matching.engine import match_providers
 from app.models.enums import ConversationState as ConversationStateEnum
 from app.models.intake import IntakeRecord
-from app.services.intake_extraction import extract_with_ollama, extract_with_rules
+from app.services.intake_extraction import (
+    extract_with_ollama,
+    extract_with_rules,
+    is_affirmative_reply,
+)
 from app.services.provider_loader import list_provider_records
 from app.services.response_generation import (
     generate_assistant_reply,
@@ -157,6 +161,7 @@ def prepare_user_message_turn(
         db.flush()
 
     intake = IntakeRecord.model_validate(intake_orm.structured_json)
+    had_follow_up_consent = intake.consent.consent_to_contact is True
     current_state = ConversationStateEnum(session.current_state)
     if current_state == ConversationStateEnum.GREETING:
         session.current_state = ConversationStateEnum.DISCLOSURE_AND_CONSENT.value
@@ -171,7 +176,13 @@ def prepare_user_message_turn(
         rules_only=rules_only_extraction,
     )
 
-    if rules_only_extraction:
+    follow_up_consent_captured = (
+        not had_follow_up_consent
+        and intake.consent.consent_to_contact is True
+        and is_affirmative_reply(content)
+    )
+
+    if rules_only_extraction or follow_up_consent_captured:
         next_state = advance_through_satisfied_states(current_state, intake)
     else:
         next_state = advance_state(current_state, intake)
@@ -223,6 +234,9 @@ def prepare_user_message_turn(
             f"I recommend exploring {recommendation.primary.replace('_', ' ')} first. "
             f"I found {len(matches)} provider options that may fit."
         )
+
+    if follow_up_consent_captured and reply_override is None:
+        reply_override = fallback
 
     return PreparedTurn(
         session_id=session_id,

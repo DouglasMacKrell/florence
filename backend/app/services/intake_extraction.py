@@ -60,6 +60,11 @@ def apply_extraction_patch(intake: IntakeRecord, patch: dict[str, Any]) -> None:
         ]
 
 
+def is_affirmative_reply(content: str) -> bool:
+    lowered = content.lower().strip()
+    return lowered.startswith("yes") or lowered in {"sure", "ok", "okay", "yep", "yeah"}
+
+
 def extract_with_rules(
     intake: IntakeRecord, content: str, state: ConversationState
 ) -> SafetySignals:
@@ -71,9 +76,12 @@ def extract_with_rules(
 
 def _apply_simple_extraction(intake: IntakeRecord, content: str, state: ConversationState) -> None:
     lowered = content.lower().strip()
-    if lowered.startswith("yes") or lowered in {"sure", "ok", "okay"}:
+    if is_affirmative_reply(content):
         if state == ConversationState.DISCLOSURE_AND_CONSENT:
             intake.consent.consent_to_store_information = True
+        elif state == ConversationState.COLLECT_CALLER_CONTACT:
+            if intake.consent.consent_to_store_information is True:
+                intake.consent.consent_to_contact = True
         elif state == ConversationState.CAPTURE_FOLLOWUP_CONSENT:
             intake.consent.consent_to_share_with_matched_providers = True
             intake.consent.consent_to_contact = True
