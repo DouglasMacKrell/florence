@@ -18,6 +18,7 @@ class LocationInfo(BaseModel):
 class CareRecipientInfo(BaseModel):
     name: str | None = None
     age: int | None = None
+    relationship_descriptor: str | None = None
     current_location: LocationInfo = Field(default_factory=LocationInfo)
     living_situation: str | None = None
     is_participating_in_decision: bool | None = None

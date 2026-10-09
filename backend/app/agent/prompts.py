@@ -18,13 +18,16 @@ Follow the application-provided conversation state and field requirements.
 
 EXTRACTION_PROMPT = """Extract intake fields mentioned in the latest user message.
 Return JSON only with any of these keys when present:
-caller_name, caller_phone, caller_email, relationship, care_recipient_name,
-care_recipient_age, care_notes, requested_care_types, urgency, postal_code,
-preferred_city, preferred_state, budget_min, budget_max, payment_sources,
+caller_name, caller_phone, caller_email, relationship, care_recipient_role,
+care_recipient_name, care_recipient_age, care_notes, requested_care_types, urgency,
+postal_code, preferred_city, preferred_state, budget_min, budget_max, payment_sources,
 memory_concerns, overnight_support_needed, consent_to_store, consent_to_contact,
 consent_to_share, private_room_required, language_preferences.
 
 Use null for unknown values. Use booleans for yes/no consent and care flags.
+relationship is the CALLER's relationship to the person needing care (daughter, son, spouse).
+care_recipient_role is who needs care when stated (mother, father, spouse, parent).
+Do not put the caller's name into city or location fields.
 Do not include extra keys.
 """
 

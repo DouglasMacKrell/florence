@@ -91,7 +91,7 @@ def test_follow_up_consent_yes_routes_to_phone_without_repeating_consent(db_sess
 
     def mock_extract(intake: IntakeRecord, content: str, state, history):
         if content.strip().lower() == "yes":
-            apply_extraction_patch(intake, {"consent_to_contact": True})
+            apply_extraction_patch(intake, {"consent_to_contact": True}, state=state)
         return detect_safety_signals(content)
 
     mock_llm = MagicMock()
@@ -120,7 +120,7 @@ def test_follow_up_consent_decline_does_not_mark_contact(db_session) -> None:
     _seed_pre_consent_intake(db_session, session.id)
 
     def mock_extract(intake: IntakeRecord, content: str, state, history):
-        apply_extraction_patch(intake, {"consent_to_contact": False})
+        apply_extraction_patch(intake, {"consent_to_contact": False}, state=state)
         return detect_safety_signals(content)
 
     with patch("app.services.conversation.extract_with_ollama", side_effect=mock_extract):
@@ -182,7 +182,7 @@ def test_streamed_turn_uses_scripted_next_question_after_follow_up_consent(
     _seed_pre_consent_intake(db_session, session.id)
 
     def mock_extract(intake: IntakeRecord, content: str, state, history):
-        apply_extraction_patch(intake, {"consent_to_contact": True})
+        apply_extraction_patch(intake, {"consent_to_contact": True}, state=state)
         return detect_safety_signals(content)
 
     with patch("app.services.conversation.extract_with_ollama", side_effect=mock_extract):

@@ -1,4 +1,7 @@
+import re
+
 from app.models.intake import IntakeRecord
+from app.services.intake_extraction_policy import format_phone_display
 
 SUMMARY_CONFIRMATION_QUESTION = "Does that summary sound accurate?"
 
@@ -7,40 +10,74 @@ def _format_currency(amount: int) -> str:
     return f"${amount:,}"
 
 
-def _format_urgency(urgency: str) -> str:
+def _format_urgency_phrase(urgency: str) -> str | None:
     normalized = urgency.replace("_", " ").strip()
-    if normalized == "within 30 days":
-        return "within about 30 days"
-    return normalized
+    lowered = normalized.lower()
+    if lowered in {"within 30 days", "within_30_days"}:
+        return "within the next month"
+    first = normalized.split(".")[0].strip()
+    if not first:
+        return None
+    if first.lower().startswith("by "):
+        return first[0].lower() + first[1:]
+    if first.lower().startswith("within "):
+        return first[0].lower() + first[1:]
+    return first[0].lower() + first[1:] if first else None
 
 
-def _location_phrase(intake: IntakeRecord) -> str | None:
-    postal = intake.location_preferences.postal_code
-    city = intake.location_preferences.preferred_city
-    state = intake.location_preferences.preferred_state
-    if city and state:
-        place = f"{city}, {state}"
-    elif city:
-        place = city
-    elif state:
-        place = state
-    else:
-        place = None
-    if postal and place:
-        return f"near {place} (ZIP {postal})"
-    if postal:
-        return f"near ZIP code {postal}"
-    if place:
-        return f"near {place}"
+def _care_recipient_label(intake: IntakeRecord) -> str | None:
+    descriptor = intake.care_recipient.relationship_descriptor
+    if descriptor:
+        return descriptor.lower()
+    name = intake.care_recipient.name
+    if name:
+        return name
     return None
 
 
-def _care_needs_phrase(intake: IntakeRecord) -> str | None:
-    if intake.care_needs.notes:
-        return intake.care_needs.notes.strip()
+def _opening_care_line(intake: IntakeRecord) -> str | None:
+    age = intake.care_recipient.age
+    label = _care_recipient_label(intake)
+    postal = intake.location_preferences.postal_code
+
+    if label and age is not None and postal:
+        return f"You're looking for care for your {age}-year-old {label} near ZIP code {postal}."
+    if label and age is not None:
+        return f"You're looking for care for your {age}-year-old {label}."
+    if age is not None and postal:
+        return f"You're looking for care for someone who is {age} near ZIP code {postal}."
+    if label and postal:
+        return f"You're looking for care for your {label} near ZIP code {postal}."
+    if postal:
+        return f"You're looking for care near ZIP code {postal}."
+    if label and age is not None:
+        return f"You're looking for care for your {age}-year-old {label}."
+    return None
+
+
+def _subject_pronoun(intake: IntakeRecord) -> str:
+    descriptor = (intake.care_recipient.relationship_descriptor or "").lower()
+    if descriptor in {"mother", "wife", "grandmother"}:
+        return "She"
+    if descriptor in {"father", "husband", "grandfather"}:
+        return "He"
+    return "They"
+
+
+def _format_care_needs_paragraph(intake: IntakeRecord) -> str | None:
+    subject = _subject_pronoun(intake)
+    notes = (intake.care_needs.notes or "").strip().rstrip(".")
+    if notes:
+        if re.match(r"^(she|he|they)\b", notes, re.IGNORECASE):
+            text = notes[0].upper() + notes[1:]
+            if not text.endswith("."):
+                text += "."
+            return text
+        lowered = notes[0].lower() + notes[1:] if len(notes) > 1 else notes.lower()
+        return f"{subject} needs help with {lowered}."
     if intake.care_needs.requested_care_types:
         types = [value.replace("_", " ") for value in intake.care_needs.requested_care_types]
-        return ", ".join(types)
+        return f"{subject} needs help with {', '.join(types)}."
     flags: list[str] = []
     adl = intake.care_needs.activities_of_daily_living
     for label, value in (
@@ -54,85 +91,89 @@ def _care_needs_phrase(intake: IntakeRecord) -> str | None:
     if intake.care_needs.memory_concerns is True:
         flags.append("memory support")
     if flags:
-        return ", ".join(flags)
+        return f"{subject} needs help with {', '.join(flags)}."
     return None
 
 
-def _budget_phrase(intake: IntakeRecord) -> str | None:
+def _needs_and_timing_paragraph(intake: IntakeRecord) -> str | None:
+    care = _format_care_needs_paragraph(intake)
+    urgency = intake.timing.urgency
+    urgency_phrase = _format_urgency_phrase(urgency) if urgency else None
+
+    if care and urgency_phrase:
+        care_sentence = care.rstrip(".")
+        return f"{care_sentence}, and you're hoping to arrange support {urgency_phrase}."
+    if care:
+        return care
+    if urgency_phrase:
+        return f"You're hoping to arrange support {urgency_phrase}."
+    return None
+
+
+def _budget_paragraph(intake: IntakeRecord) -> str | None:
     minimum = intake.financial.monthly_budget_min
     maximum = intake.financial.monthly_budget_max
     if minimum is not None and maximum is not None and minimum != maximum:
         return (
-            f"a monthly budget of about {_format_currency(minimum)} to {_format_currency(maximum)}"
+            f"Your budget is about {_format_currency(minimum)} to "
+            f"{_format_currency(maximum)} per month."
         )
     if maximum is not None:
-        return f"a monthly budget around {_format_currency(maximum)}"
+        return f"Your budget is around {_format_currency(maximum)} per month."
     if minimum is not None:
-        return f"a monthly budget of at least {_format_currency(minimum)}"
+        return f"Your budget is at least {_format_currency(minimum)} per month."
     return None
 
 
-def _care_recipient_phrase(intake: IntakeRecord) -> str | None:
-    age = intake.care_recipient.age
-    name = intake.care_recipient.name
-    relationship = intake.caller.relationship_to_care_recipient
-    if name and age is not None:
-        return f"{name} is {age} years old"
-    if name:
-        return name
-    if age is not None and relationship:
-        return f"Your {relationship} is about {age} years old"
-    if age is not None:
-        return f"the care recipient is about {age} years old"
-    return None
+def _contact_block(intake: IntakeRecord) -> str | None:
+    name = intake.caller.name
+    phone = intake.caller.phone
+    if not name and not phone:
+        return None
+    lines = ["I have your contact information as:"]
+    if name and phone:
+        lines.append(f"{name} — {format_phone_display(phone)}")
+    elif name:
+        lines.append(name)
+    elif phone:
+        lines.append(format_phone_display(phone))
+    return "\n".join(lines)
 
 
-def build_intake_summary_sentences(intake: IntakeRecord) -> list[str]:
-    sentences: list[str] = []
-
-    recipient = _care_recipient_phrase(intake)
-    location = _location_phrase(intake)
-    if recipient and location:
-        sentences.append(f"{recipient}, and care should be {location}.")
-    elif recipient:
-        sentences.append(f"{recipient}.")
-    elif location:
-        sentences.append(f"Care should be {location}.")
-
-    care_needs = _care_needs_phrase(intake)
-    if care_needs:
-        sentences.append(f"Help is needed with {care_needs}.")
-
-    urgency = intake.timing.urgency
-    if urgency:
-        sentences.append(f"You are hoping care can start {_format_urgency(urgency)}.")
-
-    budget = _budget_phrase(intake)
-    if budget:
-        sentences.append(f"You mentioned {budget}.")
-
-    if intake.caller.name:
-        sentences.append(f"I have your name as {intake.caller.name}.")
-    if intake.caller.phone:
-        sentences.append(f"The best number to reach you is {intake.caller.phone}.")
-    if intake.caller.relationship_to_care_recipient:
-        sentences.append(
-            "You described your relationship as "
-            f"{intake.caller.relationship_to_care_recipient} of the person needing care."
-        )
-
+def _consent_paragraph(intake: IntakeRecord) -> str | None:
     if intake.consent.consent_to_contact is True:
-        sentences.append("You agreed I may contact you for care-navigation updates and referrals.")
-
-    return sentences
+        return (
+            "You've also agreed that Florence may contact you with care-navigation updates "
+            "and provider referrals."
+        )
+    return None
 
 
 def build_intake_confirmation_message(intake: IntakeRecord) -> str:
-    sentences = build_intake_summary_sentences(intake)
-    if not sentences:
-        summary_body = "I captured the details you shared so far."
-    else:
-        summary_body = " ".join(sentences)
-    return (
-        f"Let me make sure I have this right.\n\n{summary_body}\n\n{SUMMARY_CONFIRMATION_QUESTION}"
-    )
+    paragraphs: list[str] = ["Let me make sure I have this right."]
+
+    opening = _opening_care_line(intake)
+    if opening:
+        paragraphs.append(opening)
+
+    needs_timing = _needs_and_timing_paragraph(intake)
+    if needs_timing:
+        paragraphs.append(needs_timing)
+
+    budget = _budget_paragraph(intake)
+    if budget:
+        paragraphs.append(budget)
+
+    contact = _contact_block(intake)
+    if contact:
+        paragraphs.append(contact)
+
+    consent = _consent_paragraph(intake)
+    if consent:
+        paragraphs.append(consent)
+
+    if len(paragraphs) == 1:
+        paragraphs.append("I captured the details you shared so far.")
+
+    paragraphs.append(SUMMARY_CONFIRMATION_QUESTION)
+    return "\n\n".join(paragraphs)

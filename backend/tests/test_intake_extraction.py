@@ -16,6 +16,7 @@ def test_apply_extraction_patch_updates_nested_fields() -> None:
             "budget_max": 8000,
             "consent_to_contact": True,
         },
+        state=ConversationState.DISCLOSURE_AND_CONSENT,
     )
     assert intake.caller.name == "Jane Doe"
     assert intake.caller.phone == "555-123-4567"
