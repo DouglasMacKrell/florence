@@ -8,10 +8,14 @@ cd "$ROOT"
 ran=0
 
 if [[ -f backend/pyproject.toml ]]; then
+  RUFF="ruff"
+  if [[ -x "$ROOT/backend/.venv/bin/ruff" ]]; then
+    RUFF="$ROOT/backend/.venv/bin/ruff"
+  fi
   echo "==> backend: ruff check"
-  (cd backend && ruff check .)
+  (cd backend && "$RUFF" check .)
   echo "==> backend: ruff format --check"
-  (cd backend && ruff format --check .)
+  (cd backend && "$RUFF" format --check .)
   ran=1
 fi
 

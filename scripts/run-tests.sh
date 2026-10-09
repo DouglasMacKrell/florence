@@ -9,7 +9,12 @@ ran=0
 
 if [[ -f backend/pyproject.toml ]]; then
   echo "==> backend: pytest"
-  (cd backend && pytest -q)
+  PYTEST="pytest"
+  if [[ -x "$ROOT/backend/.venv/bin/pytest" ]]; then
+    PYTEST="$ROOT/backend/.venv/bin/pytest"
+  fi
+  # Default in-memory DB when unset so local .env Postgres is not required for the gate.
+  (cd backend && DATABASE_URL="${DATABASE_URL:-sqlite+pysqlite:///:memory:}" "$PYTEST" -q)
   ran=1
 fi
 
