@@ -43,11 +43,18 @@ def run_demo_walkthrough(
 
     final_turn = turns[-1]
     matches = final_turn.matches or []
+    care_recommendation = final_turn.care_recommendation
+    if not matches:
+        for turn in reversed(turns):
+            if turn.matches:
+                matches = turn.matches
+                care_recommendation = care_recommendation or turn.care_recommendation
+                break
     return WalkthroughResult(
         session_id=session.id,
         final_state=final_turn.state,
         intake=final_turn.intake,
         matches=matches,
-        care_recommendation=final_turn.care_recommendation,
+        care_recommendation=care_recommendation,
         turns=turns,
     )

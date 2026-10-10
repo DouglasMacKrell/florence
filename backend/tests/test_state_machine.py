@@ -38,12 +38,17 @@ def test_decision_process_routes_to_contact_when_phone_missing() -> None:
     intake = IntakeRecord()
     assert (
         advance_state(ConversationState.UNDERSTAND_DECISION_PROCESS, intake)
-        == ConversationState.COLLECT_CALLER_CONTACT
+        == ConversationState.COLLECT_FOLLOWUP_CONSENT
     )
 
 
 def test_decision_process_skips_contact_when_phone_present() -> None:
-    intake = IntakeRecord.model_validate({"caller": {"phone": "555-123-4567"}})
+    intake = IntakeRecord.model_validate(
+        {
+            "caller": {"phone": "555-123-4567"},
+            "consent": {"consent_to_contact": True},
+        }
+    )
     assert (
         advance_state(ConversationState.UNDERSTAND_DECISION_PROCESS, intake)
         == ConversationState.CONFIRM_SUMMARY

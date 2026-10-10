@@ -12,6 +12,7 @@ ORDERED_STATES: list[ConversationState] = [
     ConversationState.COLLECT_FINANCIAL_REQUIREMENTS,
     ConversationState.COLLECT_PREFERENCES,
     ConversationState.UNDERSTAND_DECISION_PROCESS,
+    ConversationState.COLLECT_FOLLOWUP_CONSENT,
     ConversationState.COLLECT_CALLER_CONTACT,
     ConversationState.CONFIRM_SUMMARY,
     ConversationState.MATCH_PROVIDERS,
@@ -75,9 +76,18 @@ def advance_state(current: ConversationState, intake: IntakeRecord) -> Conversat
         return ConversationState.UNDERSTAND_DECISION_PROCESS
 
     if current == ConversationState.UNDERSTAND_DECISION_PROCESS:
+        if intake.consent.consent_to_contact is None:
+            return ConversationState.COLLECT_FOLLOWUP_CONSENT
         if intake.caller.phone:
             return ConversationState.CONFIRM_SUMMARY
         return ConversationState.COLLECT_CALLER_CONTACT
+
+    if current == ConversationState.COLLECT_FOLLOWUP_CONSENT:
+        if intake.consent.consent_to_contact is not None:
+            if intake.caller.phone:
+                return ConversationState.CONFIRM_SUMMARY
+            return ConversationState.COLLECT_CALLER_CONTACT
+        return current
 
     if current == ConversationState.COLLECT_CALLER_CONTACT:
         if intake.caller.phone:
@@ -96,7 +106,7 @@ def advance_state(current: ConversationState, intake: IntakeRecord) -> Conversat
         return ConversationState.CAPTURE_FOLLOWUP_CONSENT
 
     if current == ConversationState.CAPTURE_FOLLOWUP_CONSENT:
-        if intake.consent.consent_to_share_with_matched_providers is True:
+        if intake.consent.consent_to_share_with_matched_providers is not None:
             return ConversationState.END_OR_HUMAN_HANDOFF
         return current
 

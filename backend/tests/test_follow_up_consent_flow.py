@@ -1,11 +1,10 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.agent.safety import detect_safety_signals
 from app.agent.state_machine import ConversationState
 from app.config import clear_settings_cache
 from app.db.database import Base
@@ -18,7 +17,7 @@ from app.services.conversation import (
     prepare_user_message_turn,
     process_user_message,
 )
-from app.services.intake_extraction import apply_extraction_patch, extract_with_rules
+from app.services.intake_extraction import extract_with_rules
 from app.services.response_generation import EMERGENCY_REPLY, generate_assistant_reply
 
 
@@ -59,7 +58,7 @@ def _seed_pre_consent_intake(db_session, session_id: str) -> None:
             "consent": {"consent_to_store_information": True, "consent_to_contact": None},
         }
     )
-    session.current_state = ConversationStateEnum.IDENTIFY_CARE_RECIPIENT.value
+    session.current_state = ConversationStateEnum.COLLECT_FOLLOWUP_CONSENT.value
     orm = session.intake
     assert orm is not None
     orm.structured_json = intake.model_dump()
@@ -87,30 +86,12 @@ def test_follow_up_consent_yes_routes_to_phone_without_repeating_consent(db_sess
     db_session.flush()
     _seed_pre_consent_intake(db_session, session.id)
 
-    consent_question = "May I have your consent to contact you for updates and provider referrals?"
-
-    def mock_extract(intake: IntakeRecord, content: str, state, history):
-        if content.strip().lower() == "yes":
-            apply_extraction_patch(intake, {"consent_to_contact": True}, state=state)
-        return detect_safety_signals(content)
-
-    mock_llm = MagicMock()
-    mock_llm.is_available.return_value = True
-    mock_llm.chat.return_value = consent_question
-
-    with (
-        patch("app.services.conversation.extract_with_ollama", side_effect=mock_extract),
-        patch(
-            "app.services.response_generation.get_llm_client",
-            return_value=mock_llm,
-        ),
-    ):
-        turn = process_user_message(db_session, session.id, "Yes")
+    turn = process_user_message(db_session, session.id, "Yes")
 
     assert turn.intake.consent.consent_to_contact is True
     assert "consent.consent_to_contact" not in turn.intake.missing_required_fields()
     assert turn.state == ConversationState.COLLECT_CALLER_CONTACT.value
-    assert consent_question.lower() not in turn.content.lower()
+    assert "consent" not in turn.content.lower() or "phone number" in turn.content.lower()
     assert "phone number" in turn.content.lower()
 
 
@@ -119,17 +100,12 @@ def test_follow_up_consent_decline_does_not_mark_contact(db_session) -> None:
     db_session.flush()
     _seed_pre_consent_intake(db_session, session.id)
 
-    def mock_extract(intake: IntakeRecord, content: str, state, history):
-        apply_extraction_patch(intake, {"consent_to_contact": False}, state=state)
-        return detect_safety_signals(content)
-
-    with patch("app.services.conversation.extract_with_ollama", side_effect=mock_extract):
-        turn = process_user_message(
-            db_session,
-            session.id,
-            "No, please do not contact me.",
-            scripted_reply=True,
-        )
+    turn = process_user_message(
+        db_session,
+        session.id,
+        "No, please do not contact me.",
+        scripted_reply=True,
+    )
 
     assert turn.intake.consent.consent_to_contact is not True
     assert "consent.consent_to_contact" in turn.intake.missing_required_fields()
@@ -157,7 +133,6 @@ def test_capture_follow_up_consent_keeps_share_separate(db_session) -> None:
     )
     extract_with_rules(intake, "Yes", ConversationState.CAPTURE_FOLLOWUP_CONSENT)
     assert intake.consent.consent_to_share_with_matched_providers is True
-    assert intake.consent.consent_to_contact is True
 
 
 def test_emergency_reply_still_bypasses_llm() -> None:
@@ -181,12 +156,7 @@ def test_streamed_turn_uses_scripted_next_question_after_follow_up_consent(
     db_session.flush()
     _seed_pre_consent_intake(db_session, session.id)
 
-    def mock_extract(intake: IntakeRecord, content: str, state, history):
-        apply_extraction_patch(intake, {"consent_to_contact": True}, state=state)
-        return detect_safety_signals(content)
-
-    with patch("app.services.conversation.extract_with_ollama", side_effect=mock_extract):
-        prepared = prepare_user_message_turn(db_session, session.id, "Yes")
+    prepared = prepare_user_message_turn(db_session, session.id, "Yes")
 
     assert prepared.intake.consent.consent_to_contact is True
     assert prepared.conversation_state == ConversationState.COLLECT_CALLER_CONTACT

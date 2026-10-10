@@ -4,10 +4,20 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from app.agent.care_recommender import recommend_care_types
+from app.agent.consent_boundary import (
+    FOLLOW_UP_CONTACT_QUESTION,
+    PROVIDER_SHARE_QUESTION,
+    STORE_INFORMATION_QUESTION,
+    consent_kind_for_state,
+    consent_question_for_kind,
+    ensure_consent_gate_state,
+    is_consent_collecting_state,
+    process_consent_turn,
+)
 from app.agent.state_machine import (
+    ORDERED_STATES,
     ConversationState,
     advance_state,
-    advance_through_satisfied_states,
 )
 from app.config import get_settings
 from app.db.tables import (
@@ -21,11 +31,7 @@ from app.db.tables import (
 from app.matching.engine import match_providers
 from app.models.enums import ConversationState as ConversationStateEnum
 from app.models.intake import IntakeRecord
-from app.services.intake_extraction import (
-    extract_with_ollama,
-    extract_with_rules,
-    is_affirmative_reply,
-)
+from app.services.intake_extraction import extract_with_ollama, extract_with_rules
 from app.services.intake_summary import build_intake_confirmation_message
 from app.services.provider_loader import list_provider_records
 from app.services.response_generation import (
@@ -62,11 +68,7 @@ STATE_PROMPTS = {
         "Thank you for reaching out. I'm Florence, a care-navigation assistant. "
         "I can help you understand elder-care options and find providers that may fit."
     ),
-    ConversationState.DISCLOSURE_AND_CONSENT: (
-        "Before we begin, I'm an automated assistant, not a medical professional. "
-        "With your permission, I'll save what you share so a care specialist can follow up. "
-        "May I store the information you provide?"
-    ),
+    ConversationState.DISCLOSURE_AND_CONSENT: STORE_INFORMATION_QUESTION,
     ConversationState.UNDERSTAND_REASON_FOR_CALL: (
         "Could you tell me what has been happening and what led you to look for care now?"
     ),
@@ -85,6 +87,7 @@ STATE_PROMPTS = {
     ConversationState.UNDERSTAND_DECISION_PROCESS: (
         "Who else is involved in making this decision?"
     ),
+    ConversationState.COLLECT_FOLLOWUP_CONSENT: FOLLOW_UP_CONTACT_QUESTION,
     ConversationState.COLLECT_CALLER_CONTACT: (
         "What is the best phone number to reach you at for care-navigation updates "
         "and provider referral coordination?"
@@ -98,13 +101,65 @@ STATE_PROMPTS = {
     ConversationState.EXPLAIN_RECOMMENDATIONS: (
         "Here are the strongest matches I found and why each may fit."
     ),
-    ConversationState.CAPTURE_FOLLOWUP_CONSENT: (
-        "May we share your information with the provider you choose so they can follow up?"
-    ),
+    ConversationState.CAPTURE_FOLLOWUP_CONSENT: PROVIDER_SHARE_QUESTION,
     ConversationState.END_OR_HUMAN_HANDOFF: (
         "Thank you. A care specialist can follow up with the next steps."
     ),
 }
+
+
+def _advance_with_side_effects(
+    current_state: ConversationState,
+    intake: IntakeRecord,
+) -> tuple[ConversationState, bool]:
+    state = current_state
+    crossed_match = False
+    for _ in range(len(ORDERED_STATES)):
+        next_state = advance_state(state, intake)
+        if next_state == state:
+            break
+        if (
+            next_state == ConversationState.MATCH_PROVIDERS
+            and state != ConversationState.MATCH_PROVIDERS
+        ):
+            crossed_match = True
+        state = next_state
+    return state, crossed_match
+
+
+def _populate_provider_matches(
+    db: Session,
+    session_id: str,
+    intake: IntakeRecord,
+) -> tuple[list[dict], dict]:
+    recommendation = recommend_care_types(intake)
+    care_recommendation_data = {
+        "primary": recommendation.primary,
+        "alternatives": recommendation.alternatives,
+        "rationale": recommendation.rationale,
+    }
+    db.merge(
+        CareRecommendationRecordORM(
+            session_id=session_id,
+            primary_care_type=recommendation.primary,
+            alternatives_json=recommendation.alternatives,
+            rationale=recommendation.rationale,
+        )
+    )
+    providers = list_provider_records(db)
+    matches = match_providers(intake, providers, limit=3)
+    matches_data = [match.model_dump() for match in matches]
+    for match in matches:
+        db.add(
+            MatchRecordORM(
+                session_id=session_id,
+                provider_id=match.provider_id,
+                score=match.score,
+                rank=match.rank,
+                explanation_json=match.model_dump(),
+            )
+        )
+    return matches_data, care_recommendation_data
 
 
 def create_session(db: Session) -> SessionRecord:
@@ -162,31 +217,55 @@ def prepare_user_message_turn(
         db.flush()
 
     intake = IntakeRecord.model_validate(intake_orm.structured_json)
-    had_follow_up_consent = intake.consent.consent_to_contact is True
     current_state = ConversationStateEnum(session.current_state)
     if current_state == ConversationStateEnum.GREETING:
         session.current_state = ConversationStateEnum.DISCLOSURE_AND_CONSENT.value
         intake_orm.current_state = session.current_state
         current_state = ConversationStateEnum.DISCLOSURE_AND_CONSENT
 
-    _extract_intake_fields(
-        intake,
-        content,
-        current_state,
-        _message_history(session),
-        rules_only=rules_only_extraction,
-    )
+    started_in_consent_state = consent_kind_for_state(current_state) is not None
+    consent_outcome = None
+    entered_follow_up_consent_gate = False
 
-    follow_up_consent_captured = (
-        not had_follow_up_consent
-        and intake.consent.consent_to_contact is True
-        and is_affirmative_reply(content)
-    )
+    if started_in_consent_state:
+        consent_kind = consent_kind_for_state(current_state)
+        assert consent_kind is not None
+        consent_outcome = process_consent_turn(intake, content, consent_kind)
+        _extract_intake_fields(
+            intake,
+            content,
+            current_state,
+            _message_history(session),
+            rules_only=rules_only_extraction,
+            skip_consent_fields=True,
+        )
+    else:
+        _extract_intake_fields(
+            intake,
+            content,
+            current_state,
+            _message_history(session),
+            rules_only=rules_only_extraction,
+        )
+        gated_state = ensure_consent_gate_state(current_state, intake)
+        if gated_state != current_state:
+            current_state = ConversationStateEnum(gated_state.value)
+            session.current_state = current_state.value
+            intake_orm.current_state = current_state.value
+            entered_follow_up_consent_gate = True
 
-    if rules_only_extraction or follow_up_consent_captured:
-        next_state = advance_through_satisfied_states(current_state, intake)
+    consent_resolved = consent_outcome is not None and consent_outcome.consent_resolved
+    crossed_match = False
+    if rules_only_extraction or consent_resolved:
+        next_state, crossed_match = _advance_with_side_effects(current_state, intake)
     else:
         next_state = advance_state(current_state, intake)
+        crossed_match = (
+            next_state == ConversationState.MATCH_PROVIDERS
+            and current_state != ConversationState.MATCH_PROVIDERS
+        )
+    if not started_in_consent_state and not entered_follow_up_consent_gate:
+        next_state = ensure_consent_gate_state(next_state, intake)
     if next_state != current_state:
         session.current_state = next_state.value
         intake_orm.current_state = next_state.value
@@ -211,44 +290,34 @@ def prepare_user_message_turn(
     care_recommendation_data = None
     matches_data = None
     reply_override = None
-    if (
-        next_state == ConversationState.MATCH_PROVIDERS
-        and current_state != ConversationState.MATCH_PROVIDERS
-    ):
-        recommendation = recommend_care_types(intake)
-        care_recommendation_data = {
-            "primary": recommendation.primary,
-            "alternatives": recommendation.alternatives,
-            "rationale": recommendation.rationale,
-        }
-        db.merge(
-            CareRecommendationRecordORM(
-                session_id=session_id,
-                primary_care_type=recommendation.primary,
-                alternatives_json=recommendation.alternatives,
-                rationale=recommendation.rationale,
-            )
+    if crossed_match:
+        matches_data, care_recommendation_data = _populate_provider_matches(
+            db,
+            session_id,
+            intake,
         )
-        providers = list_provider_records(db)
-        matches = match_providers(intake, providers, limit=3)
-        matches_data = [match.model_dump() for match in matches]
-        for match in matches:
-            db.add(
-                MatchRecordORM(
-                    session_id=session_id,
-                    provider_id=match.provider_id,
-                    score=match.score,
-                    rank=match.rank,
-                    explanation_json=match.model_dump(),
-                )
-            )
         reply_override = (
-            f"I recommend exploring {recommendation.primary.replace('_', ' ')} first. "
-            f"I found {len(matches)} provider options that may fit."
+            f"I recommend exploring {care_recommendation_data['primary'].replace('_', ' ')} first. "
+            f"I found {len(matches_data)} provider options that may fit."
         )
 
-    if follow_up_consent_captured and reply_override is None:
-        reply_override = fallback
+    if entered_follow_up_consent_gate and reply_override is None:
+        reply_override = FOLLOW_UP_CONTACT_QUESTION
+
+    if consent_outcome is not None and reply_override is None:
+        if consent_outcome.consent_resolved:
+            reply_override = fallback
+        else:
+            reply_override = consent_outcome.scripted_reply
+
+    if (
+        is_consent_collecting_state(ConversationStateEnum(session.current_state))
+        and reply_override is None
+        and not entered_follow_up_consent_gate
+    ):
+        kind = consent_kind_for_state(ConversationStateEnum(session.current_state))
+        if kind is not None:
+            reply_override = consent_question_for_kind(kind)
 
     if entered_confirm_summary and reply_override is None:
         reply_override = fallback
@@ -266,9 +335,17 @@ def prepare_user_message_turn(
     )
 
 
+def _uses_scripted_reply(prepared: PreparedTurn) -> bool:
+    if is_consent_collecting_state(prepared.conversation_state):
+        return True
+    return prepared.conversation_state == ConversationStateEnum.COLLECT_CALLER_CONTACT
+
+
 def _generate_reply(prepared: PreparedTurn, *, scripted_reply: bool = False) -> str:
-    if prepared.reply_override:
+    if prepared.reply_override is not None:
         return prepared.reply_override
+    if _uses_scripted_reply(prepared):
+        return prepared.fallback
     return generate_assistant_reply(
         intake=prepared.intake,
         state=prepared.conversation_state,
@@ -301,8 +378,11 @@ def complete_user_message_turn(
 
 
 def stream_user_message_tokens(prepared: PreparedTurn) -> Iterator[str]:
-    if prepared.reply_override:
+    if prepared.reply_override is not None:
         yield from stream_text_chunks(prepared.reply_override)
+        return
+    if _uses_scripted_reply(prepared):
+        yield from stream_text_chunks(prepared.fallback)
         return
     yield from stream_assistant_reply(
         intake=prepared.intake,
@@ -326,18 +406,25 @@ def _extract_intake_fields(
     history: list[dict[str, str]],
     *,
     rules_only: bool = False,
+    skip_consent_fields: bool = False,
 ) -> None:
     if rules_only:
-        extract_with_rules(intake, content, state)
+        extract_with_rules(intake, content, state, skip_consent_fields=skip_consent_fields)
         return
 
     settings = get_settings()
     if settings.enable_ollama:
-        signals = extract_with_ollama(intake, content, state, history)
+        signals = extract_with_ollama(
+            intake,
+            content,
+            state,
+            history,
+            skip_consent_fields=skip_consent_fields,
+        )
         if signals is not None:
-            extract_with_rules(intake, content, state)
+            extract_with_rules(intake, content, state, skip_consent_fields=skip_consent_fields)
             return
-    extract_with_rules(intake, content, state)
+    extract_with_rules(intake, content, state, skip_consent_fields=skip_consent_fields)
 
 
 def select_provider(db: Session, session_id: str, provider_id: str) -> dict:

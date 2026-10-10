@@ -43,7 +43,12 @@ def test_run_demo_walkthrough_reaches_provider_matches(db_session) -> None:
     result = run_demo_walkthrough(db_session)
 
     assert result.session_id
-    assert result.final_state in {"MATCH_PROVIDERS", "EXPLAIN_RECOMMENDATIONS"}
+    assert result.final_state in {
+        "MATCH_PROVIDERS",
+        "EXPLAIN_RECOMMENDATIONS",
+        "CAPTURE_FOLLOWUP_CONSENT",
+        "END_OR_HUMAN_HANDOFF",
+    }
     assert 1 <= len(result.matches) <= 3
     assert result.intake.completion_percent() == 100
     assert result.care_recommendation is not None

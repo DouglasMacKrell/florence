@@ -35,6 +35,7 @@ def apply_extraction_patch(
     patch: dict[str, Any],
     *,
     state: ConversationState,
+    skip_consent_fields: bool = False,
 ) -> None:
     if patch.get("caller_name") and can_apply_patch_field(
         "caller_name", state=state, intake=intake, new_value=patch["caller_name"]
@@ -103,12 +104,13 @@ def apply_extraction_patch(
         intake.care_needs.memory_concerns = bool(patch["memory_concerns"])
     if patch.get("overnight_support_needed") is not None:
         intake.care_needs.overnight_support_needed = bool(patch["overnight_support_needed"])
-    if patch.get("consent_to_store") is not None:
-        intake.consent.consent_to_store_information = bool(patch["consent_to_store"])
-    if patch.get("consent_to_contact") is not None:
-        intake.consent.consent_to_contact = bool(patch["consent_to_contact"])
-    if patch.get("consent_to_share") is not None:
-        intake.consent.consent_to_share_with_matched_providers = bool(patch["consent_to_share"])
+    if not skip_consent_fields:
+        if patch.get("consent_to_store") is not None:
+            intake.consent.consent_to_store_information = bool(patch["consent_to_store"])
+        if patch.get("consent_to_contact") is not None:
+            intake.consent.consent_to_contact = bool(patch["consent_to_contact"])
+        if patch.get("consent_to_share") is not None:
+            intake.consent.consent_to_share_with_matched_providers = bool(patch["consent_to_share"])
     if patch.get("private_room_required") is not None:
         intake.preferences.private_room_required = bool(patch["private_room_required"])
     if patch.get("language_preferences") and isinstance(patch["language_preferences"], list):
@@ -124,9 +126,13 @@ def is_affirmative_reply(content: str) -> bool:
 
 
 def extract_with_rules(
-    intake: IntakeRecord, content: str, state: ConversationState
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationState,
+    *,
+    skip_consent_fields: bool = False,
 ) -> SafetySignals:
-    _apply_simple_extraction(intake, content, state)
+    _apply_simple_extraction(intake, content, state, skip_consent_fields=skip_consent_fields)
     signals = detect_safety_signals(content)
     _apply_safety_signals(intake, signals)
     reconcile_intake_coherence(intake)
@@ -179,17 +185,21 @@ def _apply_relationship_heuristics(intake: IntakeRecord, content: str) -> None:
             break
 
 
-def _apply_simple_extraction(intake: IntakeRecord, content: str, state: ConversationState) -> None:
+def _apply_simple_extraction(
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationState,
+    *,
+    skip_consent_fields: bool = False,
+) -> None:
     lowered = content.lower().strip()
-    if is_affirmative_reply(content):
+    if not skip_consent_fields and is_affirmative_reply(content):
         if state == ConversationState.DISCLOSURE_AND_CONSENT:
             intake.consent.consent_to_store_information = True
-        elif state == ConversationState.COLLECT_CALLER_CONTACT:
-            if intake.consent.consent_to_store_information is True:
-                intake.consent.consent_to_contact = True
+        elif state == ConversationState.COLLECT_FOLLOWUP_CONSENT:
+            intake.consent.consent_to_contact = True
         elif state == ConversationState.CAPTURE_FOLLOWUP_CONSENT:
             intake.consent.consent_to_share_with_matched_providers = True
-            intake.consent.consent_to_contact = True
 
     _apply_relationship_heuristics(intake, content)
 
@@ -229,9 +239,6 @@ def _apply_simple_extraction(intake: IntakeRecord, content: str, state: Conversa
         and (state != ConversationState.COLLECT_CALLER_CONTACT or name_allowed_at_contact)
     ):
         intake.caller.name = content.strip()
-
-    if intake.caller.phone and intake.consent.consent_to_store_information is True:
-        intake.consent.consent_to_contact = True
 
     care_sentence = re.search(r"\b(?:she|he|they)[' ]?s[^.!?]+[.!?]?", content, re.IGNORECASE)
     if care_sentence and can_apply_patch_field(
@@ -356,6 +363,8 @@ def extract_with_ollama(
     state: ConversationState,
     history: list[dict[str, str]],
     client: LlmClient | None = None,
+    *,
+    skip_consent_fields: bool = False,
 ) -> SafetySignals | None:
     llm = client or get_llm_client()
     messages = [
@@ -377,7 +386,12 @@ def extract_with_ollama(
     except LlmError:
         return None
 
-    apply_extraction_patch(intake, patch, state=state)
+    apply_extraction_patch(
+        intake,
+        patch,
+        state=state,
+        skip_consent_fields=skip_consent_fields,
+    )
     signals = detect_safety_signals(content)
     _apply_safety_signals(intake, signals)
     reconcile_intake_coherence(intake)
