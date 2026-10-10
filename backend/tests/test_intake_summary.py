@@ -1,8 +1,21 @@
+import pytest
+
 from app.models.intake import IntakeRecord
 from app.services.intake_summary import (
     SUMMARY_CONFIRMATION_QUESTION,
     build_intake_confirmation_message,
 )
+
+
+def _mother_intake(*, care_needs: dict | None = None, **overrides: object) -> IntakeRecord:
+    base: dict = {
+        "care_recipient": {"age": 82, "relationship_descriptor": "mother"},
+        "timing": {"urgency": "within_30_days"},
+    }
+    if care_needs is not None:
+        base["care_needs"] = care_needs
+    base.update(overrides)
+    return IntakeRecord.model_validate(base)
 
 
 def test_confirmation_summary_uses_structured_intake_with_paragraphs() -> None:
@@ -32,6 +45,35 @@ def test_confirmation_summary_uses_structured_intake_with_paragraphs() -> None:
     assert "within the next month" in message
     assert message.endswith(SUMMARY_CONFIRMATION_QUESTION)
     assert "Help is needed with" not in message
+
+
+_TIMING_TAIL = ", and you're hoping to arrange support within the next month."
+
+
+@pytest.mark.parametrize(
+    ("notes", "expected_care_fragment"),
+    [
+        ("help around the house", "She needs help around the house"),
+        ("needs help around the house", "She needs help around the house"),
+        (
+            "She's starting to need help around the house",
+            "She's starting to need help around the house",
+        ),
+        (
+            "cooking, cleaning, and getting around safely",
+            "She needs help with cooking, cleaning, and getting around safely",
+        ),
+    ],
+)
+def test_care_needs_notes_render_without_duplicated_help(
+    notes: str,
+    expected_care_fragment: str,
+) -> None:
+    intake = _mother_intake(care_needs={"notes": notes})
+    message = build_intake_confirmation_message(intake)
+    assert expected_care_fragment + _TIMING_TAIL in message
+    assert "needs help with help" not in message.lower()
+    assert "needs help with needs" not in message.lower()
 
 
 def test_confirmation_summary_omits_missing_fields_cleanly() -> None:

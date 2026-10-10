@@ -64,6 +64,49 @@ def _subject_pronoun(intake: IntakeRecord) -> str:
     return "They"
 
 
+def _sentence_case(fragment: str) -> str:
+    if not fragment:
+        return fragment
+    return fragment[0].lower() + fragment[1:]
+
+
+def _normalize_care_needs_clause(notes: str) -> str:
+    """Map persisted care_needs.notes (raw user language) to text after the subject."""
+    text = notes.strip().rstrip(".")
+    if not text:
+        return ""
+    lowered = text.lower()
+
+    if lowered.startswith("needs help with ") or lowered.startswith("needs help "):
+        clause = _sentence_case(text)
+    elif lowered.startswith("need help with "):
+        clause = "needs help with " + text[len("need help with ") :]
+    elif lowered.startswith("need help "):
+        clause = "needs help " + text[len("need help ") :]
+    elif lowered.startswith("help with "):
+        clause = "needs " + lowered
+    elif lowered.startswith("help "):
+        clause = "needs help " + text[len("help ") :]
+    else:
+        clause = f"needs help with {_sentence_case(text)}"
+
+    clause = re.sub(
+        r"^needs help with help\b",
+        "needs help",
+        clause,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    clause = re.sub(
+        r"^needs help with needs\b",
+        "needs help",
+        clause,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    return clause
+
+
 def _format_care_needs_paragraph(intake: IntakeRecord) -> str | None:
     subject = _subject_pronoun(intake)
     notes = (intake.care_needs.notes or "").strip().rstrip(".")
@@ -73,8 +116,10 @@ def _format_care_needs_paragraph(intake: IntakeRecord) -> str | None:
             if not text.endswith("."):
                 text += "."
             return text
-        lowered = notes[0].lower() + notes[1:] if len(notes) > 1 else notes.lower()
-        return f"{subject} needs help with {lowered}."
+        clause = _normalize_care_needs_clause(notes)
+        if not clause:
+            return None
+        return f"{subject} {clause}."
     if intake.care_needs.requested_care_types:
         types = [value.replace("_", " ") for value in intake.care_needs.requested_care_types]
         return f"{subject} needs help with {', '.join(types)}."
