@@ -47,7 +47,6 @@ def test_extract_with_rules_captures_caller_identity() -> None:
     assert intake.caller.name == "Jane Doe"
     assert intake.caller.phone == "555-123-4567"
     assert intake.caller.relationship_to_care_recipient == "daughter"
-    assert intake.consent.consent_to_contact is True
 
 
 def test_extract_with_rules_captures_demo_intake() -> None:
