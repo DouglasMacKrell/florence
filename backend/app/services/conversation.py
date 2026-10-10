@@ -13,6 +13,7 @@ from app.agent.consent_boundary import (
     ensure_consent_gate_state,
     is_consent_collecting_state,
     process_consent_turn,
+    should_interpret_as_consent_answer,
 )
 from app.agent.state_machine import (
     ORDERED_STATES,
@@ -226,25 +227,35 @@ def prepare_user_message_turn(
     started_in_consent_state = consent_kind_for_state(current_state) is not None
     consent_outcome = None
     entered_follow_up_consent_gate = False
+    history = _message_history(session)
 
     if started_in_consent_state:
         consent_kind = consent_kind_for_state(current_state)
         assert consent_kind is not None
-        consent_outcome = process_consent_turn(intake, content, consent_kind)
-        _extract_intake_fields(
-            intake,
-            content,
-            current_state,
-            _message_history(session),
-            rules_only=rules_only_extraction,
-            skip_consent_fields=True,
-        )
+        if should_interpret_as_consent_answer(content, consent_kind, history):
+            consent_outcome = process_consent_turn(intake, content, consent_kind)
+            _extract_intake_fields(
+                intake,
+                content,
+                current_state,
+                history,
+                rules_only=rules_only_extraction,
+                skip_consent_fields=True,
+            )
+        else:
+            _extract_intake_fields(
+                intake,
+                content,
+                current_state,
+                history,
+                rules_only=rules_only_extraction,
+            )
     else:
         _extract_intake_fields(
             intake,
             content,
             current_state,
-            _message_history(session),
+            history,
             rules_only=rules_only_extraction,
         )
         gated_state = ensure_consent_gate_state(current_state, intake)

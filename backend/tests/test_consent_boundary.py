@@ -8,15 +8,17 @@ from sqlalchemy.pool import StaticPool
 from app.agent.consent_boundary import (
     FOLLOW_UP_CONTACT_CLARIFICATION,
     FOLLOW_UP_CONTACT_QUESTION,
+    STORE_INFORMATION_QUESTION,
     ConsentClassification,
     ConsentKind,
     classify_consent_response,
     process_consent_turn,
+    should_interpret_as_consent_answer,
 )
 from app.agent.state_machine import ConversationState
 from app.config import clear_settings_cache
 from app.db.database import Base
-from app.db.tables import SessionRecord
+from app.db.tables import MessageRecord, SessionRecord
 from app.models.enums import ConversationState as ConversationStateEnum
 from app.models.intake import IntakeRecord
 from app.services.conversation import (
@@ -66,6 +68,40 @@ def test_classify_negative_responses(message: str) -> None:
 @pytest.mark.parametrize("message", UNCLEAR_CASES)
 def test_classify_unclear_responses(message: str) -> None:
     assert classify_consent_response(message) == ConsentClassification.UNCLEAR
+
+
+def test_long_intake_opener_is_not_treated_as_storage_consent_answer() -> None:
+    opener = (
+        "I'm looking for care for my 82-year-old mother in ZIP code 11375. "
+        "She's starting to need help around the house."
+    )
+    history = [{"role": "assistant", "content": "Hello from Florence."}]
+    assert (
+        should_interpret_as_consent_answer(
+            opener,
+            ConsentKind.STORE_INFORMATION,
+            history,
+        )
+        is False
+    )
+
+
+def test_short_typo_requires_prior_storage_prompt() -> None:
+    history = [{"role": "assistant", "content": "Hello from Florence."}]
+    assert (
+        should_interpret_as_consent_answer("tes", ConsentKind.STORE_INFORMATION, history) is False
+    )
+    history_with_prompt = history + [
+        {"role": "assistant", "content": STORE_INFORMATION_QUESTION},
+    ]
+    assert (
+        should_interpret_as_consent_answer(
+            "tes",
+            ConsentKind.STORE_INFORMATION,
+            history_with_prompt,
+        )
+        is True
+    )
 
 
 def test_unclear_does_not_mutate_follow_up_consent() -> None:
@@ -122,6 +158,13 @@ def _seed_follow_up_consent_gate(db_session, session_id: str) -> None:
             "consent": {"consent_to_store_information": True, "consent_to_contact": None},
         }
     ).model_dump()
+    db_session.add(
+        MessageRecord(
+            session_id=session_id,
+            role="assistant",
+            content=FOLLOW_UP_CONTACT_QUESTION,
+        )
+    )
     db_session.flush()
 
 

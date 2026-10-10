@@ -19,14 +19,12 @@ class ConsentClassification(StrEnum):
 
 
 STORE_INFORMATION_QUESTION = (
-    "Before we begin, I'm an automated assistant, not a medical professional. "
-    "With your permission, I'll save what you share so a care specialist can follow up. "
-    "May I store the information you provide?"
+    "Before we continue, is it okay if I save the information you share "
+    "so I can help coordinate care options?"
 )
 
 STORE_INFORMATION_CLARIFICATION = (
-    "I need a clear yes or no. May I store the information you provide so a care "
-    "specialist can follow up?"
+    "Sorry, I didn't quite catch that. Is it okay if I save the information you share?"
 )
 
 FOLLOW_UP_CONTACT_QUESTION = (
@@ -34,8 +32,8 @@ FOLLOW_UP_CONTACT_QUESTION = (
 )
 
 FOLLOW_UP_CONTACT_CLARIFICATION = (
-    "I need a clear yes or no. May I contact you with updates about care options "
-    "and provider referrals?"
+    "Sorry, I didn't quite catch that. May I contact you with updates about care "
+    "options and provider referrals?"
 )
 
 PROVIDER_SHARE_QUESTION = (
@@ -66,6 +64,19 @@ _AFFIRMATIVE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"^i[' ]?ve already (consented|said yes|given permission)\b",
         r"^you may store\b",
         r"^i give permission\b",
+    )
+)
+
+_UNCLEAR_CONSENT_ATTEMPT_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"^tes\b",
+        r"^maybe\b",
+        r"^i don[' ]t know\b",
+        r"^not sure\b",
+        r"^hmm+\b",
+        r"^um+\b",
+        r"^uh+\b",
     )
 )
 
@@ -103,6 +114,63 @@ class ConsentTurnOutcome:
 
 def normalize_consent_message(content: str) -> str:
     return re.sub(r"\s+", " ", content.strip())
+
+
+def _consent_prompt_markers(kind: ConsentKind) -> tuple[str, ...]:
+    if kind == ConsentKind.STORE_INFORMATION:
+        return (
+            "save the information you share",
+            "save the information you provide",
+            "coordinate care options",
+        )
+    if kind == ConsentKind.FOLLOW_UP_CONTACT:
+        return (
+            "contact you with updates about care options",
+            "consent to contact you",
+        )
+    return ("share your information with the provider",)
+
+
+def consent_prompt_was_issued(history: list[dict[str, str]], kind: ConsentKind) -> bool:
+    markers = _consent_prompt_markers(kind)
+    for message in reversed(history):
+        if message.get("role") != "assistant":
+            continue
+        lowered = message.get("content", "").lower()
+        if any(marker in lowered for marker in markers):
+            return True
+    return False
+
+
+def _looks_like_ambiguous_consent_reply(normalized: str) -> bool:
+    if not normalized:
+        return False
+    for pattern in _UNCLEAR_CONSENT_ATTEMPT_PATTERNS:
+        if pattern.search(normalized):
+            return True
+    tokens = normalized.split()
+    if len(tokens) == 1:
+        return len(normalized) <= 16
+    return False
+
+
+def should_interpret_as_consent_answer(
+    content: str,
+    kind: ConsentKind,
+    history: list[dict[str, str]],
+) -> bool:
+    classification = classify_consent_response(content)
+    if classification in {
+        ConsentClassification.AFFIRMATIVE,
+        ConsentClassification.NEGATIVE,
+    }:
+        return True
+    normalized = normalize_consent_message(content)
+    if len(normalized) > 24:
+        return False
+    if not consent_prompt_was_issued(history, kind):
+        return False
+    return _looks_like_ambiguous_consent_reply(normalized)
 
 
 def classify_consent_response(content: str) -> ConsentClassification:
