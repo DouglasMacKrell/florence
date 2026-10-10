@@ -234,14 +234,6 @@ def prepare_user_message_turn(
         assert consent_kind is not None
         if should_interpret_as_consent_answer(content, consent_kind, history):
             consent_outcome = process_consent_turn(intake, content, consent_kind)
-            _extract_intake_fields(
-                intake,
-                content,
-                current_state,
-                history,
-                rules_only=rules_only_extraction,
-                skip_consent_fields=True,
-            )
         else:
             _extract_intake_fields(
                 intake,

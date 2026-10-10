@@ -127,13 +127,23 @@ def test_storage_consent_opener_and_typo_clarification(client: TestClient, strea
 def _fill_intake_to_follow_up(client: TestClient, session_id: str) -> dict:
     """After storage consent, send turns until follow-up contact consent is asked."""
     last = _post_turn(client, session_id, "within the next month", stream=False)
+    if last["state"] == "COLLECT_LOCATION_REQUIREMENTS":
+        last = _post_turn(client, session_id, "11375 works for us.", stream=False)
     last = _post_turn(
         client,
         session_id,
         "Our budget is about 7000 dollars per month.",
         stream=False,
     )
-    last = _post_turn(client, session_id, "Douglas MacKrell", stream=False)
+    if last["state"] == "COLLECT_PREFERENCES":
+        last = _post_turn(client, session_id, "No special preferences.", stream=False)
+    if last["state"] == "UNDERSTAND_DECISION_PROCESS":
+        last = _post_turn(
+            client,
+            session_id,
+            "I make the decisions with my siblings.",
+            stream=False,
+        )
     assert last["state"] == "COLLECT_FOLLOWUP_CONSENT"
     assert FOLLOW_UP_CONTACT_QUESTION in last["content"]
     return last
@@ -149,6 +159,40 @@ def test_follow_up_consent_decline_does_not_mark_contact(client: TestClient) -> 
     decline = _post_turn(client, session_id, "no", stream=False)
     assert decline["intake"]["consent"]["consent_to_contact"] is False
     assert decline["intake"]["consent"]["consent_to_contact"] is not True
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_follow_up_tes_does_not_persist_caller_name(client: TestClient, stream: bool) -> None:
+    session = client.post("/sessions").json()
+    session_id = session["session_id"]
+    _post_turn(client, session_id, OPENING, stream=False)
+    _post_turn(client, session_id, "yes", stream=False)
+    before = _fill_intake_to_follow_up(client, session_id)
+    intake_before = before["intake"]
+
+    typo = _post_turn(client, session_id, "tes", stream=stream)
+    assert typo["state"] == "COLLECT_FOLLOWUP_CONSENT"
+    assert typo["content"] == FOLLOW_UP_CONTACT_CLARIFICATION
+    assert typo["intake"]["consent"]["consent_to_contact"] is None
+    assert typo["intake"].get("caller", {}).get("name") in {None, ""}
+    assert typo["intake"]["care_recipient"] == intake_before["care_recipient"]
+    assert typo["intake"]["location_preferences"] == intake_before["location_preferences"]
+    assert typo["intake"]["timing"] == intake_before["timing"]
+    assert typo["intake"]["financial"] == intake_before["financial"]
+
+    affirm = _post_turn(client, session_id, "yes", stream=False)
+    assert affirm["intake"]["consent"]["consent_to_contact"] is True
+    assert affirm["state"] == "COLLECT_CALLER_CONTACT"
+
+    named = _post_turn(client, session_id, "Douglas MacKrell", stream=False)
+    assert named["intake"]["caller"]["name"] == "Douglas MacKrell"
+
+    phone = _post_turn(client, session_id, "347-495-1109", stream=False)
+    assert phone["state"] == "CONFIRM_SUMMARY"
+    assert phone["intake"]["caller"]["name"] == "Douglas MacKrell"
+    assert "tes —" not in phone["content"]
+    assert "Douglas MacKrell" in phone["content"]
+    assert "347-495-1109" in phone["content"] or "347" in phone["content"]
 
 
 def test_follow_up_consent_affirmative_after_clarification(client: TestClient) -> None:
@@ -177,6 +221,7 @@ def test_full_lifecycle_reaches_matching(client: TestClient, stream: bool) -> No
 
     _fill_intake_to_follow_up(client, session_id)
     _post_turn(client, session_id, "yes", stream=False)
+    _post_turn(client, session_id, "Douglas MacKrell", stream=False)
 
     contact = _post_turn(client, session_id, "555-123-4567", stream=False)
     assert contact["state"] == "CONFIRM_SUMMARY"

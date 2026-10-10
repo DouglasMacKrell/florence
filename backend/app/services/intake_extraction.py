@@ -8,6 +8,7 @@ from app.models.enums import ConversationState
 from app.models.intake import IntakeRecord
 from app.services.intake_extraction_policy import (
     CARE_NOTES_STATES,
+    NAME_STATES,
     can_apply_patch_field,
     looks_like_location_phrase,
     looks_like_person_name,
@@ -224,19 +225,24 @@ def _apply_simple_extraction(
 
     name_match = re.search(r"\bmy name is ([^.,!\n]+)", content, re.IGNORECASE)
     if name_match and can_apply_patch_field(
-        "caller_name", state=state, intake=intake, new_value=name_match.group(1)
+        "caller_name",
+        state=state,
+        intake=intake,
+        new_value=name_match.group(1),
+        explicit_self_identification=True,
     ):
         intake.caller.name = name_match.group(1).strip()
 
-    name_allowed_at_contact = state == ConversationState.COLLECT_CALLER_CONTACT and not digits
     if (
-        state != ConversationState.DISCLOSURE_AND_CONSENT
+        state in NAME_STATES
         and not intake.caller.name
         and looks_like_person_name(content)
         and not looks_like_location_phrase(content)
         and not is_affirmative_reply(content)
         and not digits
-        and (state != ConversationState.COLLECT_CALLER_CONTACT or name_allowed_at_contact)
+        and can_apply_patch_field(
+            "caller_name", state=state, intake=intake, new_value=content.strip()
+        )
     ):
         intake.caller.name = content.strip()
 

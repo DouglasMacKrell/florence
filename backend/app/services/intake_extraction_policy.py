@@ -141,6 +141,7 @@ def can_apply_patch_field(
     state: ConversationState,
     intake: IntakeRecord,
     new_value: Any,
+    explicit_self_identification: bool = False,
 ) -> bool:
     if field_key in CONSENT_FIELDS:
         return True
@@ -148,10 +149,12 @@ def can_apply_patch_field(
     if field_key == "caller_name":
         if _is_empty(new_value):
             return False
+        if explicit_self_identification:
+            return _is_empty(intake.caller.name) or state in NAME_STATES
         if not _is_empty(intake.caller.name) and state not in NAME_STATES:
             return False
         if _is_empty(intake.caller.name):
-            return True
+            return state in NAME_STATES
         return state in NAME_STATES
 
     if field_key == "caller_phone":

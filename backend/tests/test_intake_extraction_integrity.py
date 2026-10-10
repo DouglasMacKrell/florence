@@ -30,6 +30,17 @@ def test_mother_in_zip_message_sets_recipient_not_caller_as_daughter() -> None:
     assert intake.care_needs.notes is not None
 
 
+def test_consent_typo_does_not_become_caller_name_at_follow_up_gate() -> None:
+    intake = IntakeRecord()
+    extract_with_rules(
+        intake,
+        "tes",
+        ConversationState.COLLECT_FOLLOWUP_CONSENT,
+        skip_consent_fields=True,
+    )
+    assert intake.caller.name is None
+
+
 def test_later_name_answer_does_not_overwrite_location_or_relationship() -> None:
     intake = IntakeRecord.model_validate(
         {
@@ -155,11 +166,11 @@ def test_integration_sequence_preserves_intake_and_summary(db_session) -> None:
     with patch("app.services.conversation.extract_with_ollama", side_effect=mock_extract):
         process_user_message(db_session, session.id, opening)
         process_user_message(db_session, session.id, "Yes, you have my permission.")
-        process_user_message(db_session, session.id, "Cheeks O'Plenty")
-        process_user_message(db_session, session.id, "Yes")
-        process_user_message(db_session, session.id, "9875553456")
         process_user_message(db_session, session.id, "By the end of the month.")
         process_user_message(db_session, session.id, "500")
+        process_user_message(db_session, session.id, "Yes")
+        process_user_message(db_session, session.id, "My name is Cheeks O'Plenty.")
+        process_user_message(db_session, session.id, "9875553456")
         summary_turn = process_user_message(db_session, session.id, "Yes, that's accurate.")
 
     intake = summary_turn.intake

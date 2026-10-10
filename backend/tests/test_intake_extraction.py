@@ -8,8 +8,6 @@ def test_apply_extraction_patch_updates_nested_fields() -> None:
     apply_extraction_patch(
         intake,
         {
-            "caller_name": "Jane Doe",
-            "caller_phone": "555-123-4567",
             "relationship": "daughter",
             "care_recipient_age": 82,
             "postal_code": "11101",
@@ -17,6 +15,14 @@ def test_apply_extraction_patch_updates_nested_fields() -> None:
             "consent_to_contact": True,
         },
         state=ConversationState.DISCLOSURE_AND_CONSENT,
+    )
+    apply_extraction_patch(
+        intake,
+        {
+            "caller_name": "Jane Doe",
+            "caller_phone": "555-123-4567",
+        },
+        state=ConversationState.COLLECT_CALLER_CONTACT,
     )
     assert intake.caller.name == "Jane Doe"
     assert intake.caller.phone == "555-123-4567"
