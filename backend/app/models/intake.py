@@ -74,6 +74,7 @@ class LocationPreferences(BaseModel):
 class FinancialInfo(BaseModel):
     monthly_budget_min: int | None = None
     monthly_budget_max: int | None = None
+    budget_discussed: bool = False
     payment_sources: list[str] = Field(default_factory=list)
     long_term_care_insurance: bool | None = None
     medicaid: bool | None = None
@@ -209,7 +210,8 @@ class IntakeRecord(BaseModel):
 
     def _has_financial_constraints(self) -> bool:
         return bool(
-            self.financial.monthly_budget_min is not None
+            self.financial.budget_discussed
+            or self.financial.monthly_budget_min is not None
             or self.financial.monthly_budget_max is not None
             or self.financial.payment_sources
         )

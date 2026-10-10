@@ -47,12 +47,17 @@ def test_extract_with_rules_captures_caller_identity() -> None:
     intake.consent.consent_to_store_information = True
     extract_with_rules(
         intake,
-        "My name is Jane Doe. I'm his daughter. Please call me at 555-123-4567.",
+        "My name is Jane Doe. I'm his daughter.",
         ConversationState.UNDERSTAND_DECISION_PROCESS,
     )
     assert intake.caller.name == "Jane Doe"
-    assert intake.caller.phone == "555-123-4567"
     assert intake.caller.relationship_to_care_recipient == "daughter"
+    extract_with_rules(
+        intake,
+        "Please call me at 555-123-4567.",
+        ConversationState.COLLECT_CALLER_CONTACT,
+    )
+    assert intake.caller.phone == "555-123-4567"
 
 
 def test_extract_with_rules_captures_demo_intake() -> None:
@@ -64,7 +69,7 @@ def test_extract_with_rules_captures_demo_intake() -> None:
     extract_with_rules(
         intake,
         demo_message,
-        ConversationState.ASSESS_CARE_NEEDS,
+        ConversationState.DISCLOSURE_AND_CONSENT,
     )
     assert intake.care_recipient.age == 82
     assert intake.location_preferences.postal_code == "11101"

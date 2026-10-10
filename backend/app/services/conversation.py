@@ -19,6 +19,7 @@ from app.agent.state_machine import (
     ORDERED_STATES,
     ConversationState,
     advance_state,
+    advance_through_satisfied_states,
 )
 from app.config import get_settings
 from app.db.tables import (
@@ -32,7 +33,12 @@ from app.db.tables import (
 from app.matching.engine import match_providers
 from app.models.enums import ConversationState as ConversationStateEnum
 from app.models.intake import IntakeRecord
-from app.services.intake_extraction import extract_with_ollama, extract_with_rules
+from app.services.intake_extraction import (
+    apply_decision_makers_from_message,
+    extract_state_owned_rules,
+    extract_with_ollama,
+    extract_with_rules,
+)
 from app.services.intake_summary import build_intake_confirmation_message
 from app.services.provider_loader import list_provider_records
 from app.services.response_generation import (
@@ -250,6 +256,8 @@ def prepare_user_message_turn(
             history,
             rules_only=rules_only_extraction,
         )
+        if current_state == ConversationStateEnum.COLLECT_FINANCIAL_REQUIREMENTS:
+            intake.financial.budget_discussed = True
         gated_state = ensure_consent_gate_state(current_state, intake)
         if gated_state != current_state:
             current_state = ConversationStateEnum(gated_state.value)
@@ -257,21 +265,23 @@ def prepare_user_message_turn(
             intake_orm.current_state = current_state.value
             entered_follow_up_consent_gate = True
 
-    consent_resolved = consent_outcome is not None and consent_outcome.consent_resolved
     crossed_match = False
-    if rules_only_extraction or consent_resolved:
-        next_state, crossed_match = _advance_with_side_effects(current_state, intake)
-    else:
-        next_state = advance_state(current_state, intake)
-        crossed_match = (
-            next_state == ConversationState.MATCH_PROVIDERS
-            and current_state != ConversationState.MATCH_PROVIDERS
-        )
+    next_state = advance_through_satisfied_states(current_state, intake)
+    crossed_match = (
+        next_state == ConversationState.MATCH_PROVIDERS
+        and current_state != ConversationState.MATCH_PROVIDERS
+    )
     if not started_in_consent_state and not entered_follow_up_consent_gate:
         next_state = ensure_consent_gate_state(next_state, intake)
     if next_state != current_state:
         session.current_state = next_state.value
         intake_orm.current_state = next_state.value
+        if current_state == ConversationStateEnum.COLLECT_FINANCIAL_REQUIREMENTS:
+            apply_decision_makers_from_message(
+                intake,
+                content,
+                ConversationState.UNDERSTAND_DECISION_PROCESS,
+            )
 
     intake_orm.structured_json = intake.model_dump()
     intake_orm.completion_percent = intake.completion_percent()
@@ -287,6 +297,11 @@ def prepare_user_message_turn(
     fallback = STATE_PROMPTS.get(
         ConversationStateEnum(session.current_state), "Thank you for sharing that."
     )
+    if (
+        ConversationStateEnum(session.current_state) == ConversationStateEnum.COLLECT_CALLER_CONTACT
+        and not intake.caller.name
+    ):
+        fallback = "May I have your name for care-navigation and referral coordination?"
     if entered_confirm_summary or at_confirm_summary:
         fallback = build_intake_confirmation_message(intake)
 
@@ -425,9 +440,13 @@ def _extract_intake_fields(
             skip_consent_fields=skip_consent_fields,
         )
         if signals is not None:
-            extract_with_rules(intake, content, state, skip_consent_fields=skip_consent_fields)
             return
-    extract_with_rules(intake, content, state, skip_consent_fields=skip_consent_fields)
+    extract_state_owned_rules(
+        intake,
+        content,
+        state,
+        skip_consent_fields=skip_consent_fields,
+    )
 
 
 def select_provider(db: Session, session_id: str, provider_id: str) -> dict:

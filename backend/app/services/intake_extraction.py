@@ -7,13 +7,17 @@ from app.agent.safety import SafetySignals, detect_safety_signals
 from app.models.enums import ConversationState
 from app.models.intake import IntakeRecord
 from app.services.intake_extraction_policy import (
-    CARE_NOTES_STATES,
+    BUDGET_STATES,
+    CALLER_IDENTITY_STATES,
+    DECISION_PROCESS_STATES,
+    EARLY_INTAKE_STATES,
     NAME_STATES,
     can_apply_patch_field,
     looks_like_location_phrase,
     looks_like_person_name,
     normalize_caller_relationship,
     reconcile_intake_coherence,
+    utterance_has_budget_semantics,
 )
 from app.services.llm_client import LlmClient, LlmError, get_llm_client
 
@@ -118,12 +122,62 @@ def apply_extraction_patch(
         intake.preferences.language_preferences = [
             str(item) for item in patch["language_preferences"]
         ]
+    decision_makers = patch.get("decision_makers")
+    if (
+        decision_makers
+        and isinstance(decision_makers, list)
+        and can_apply_patch_field(
+            "decision_makers",
+            state=state,
+            intake=intake,
+            new_value=decision_makers,
+        )
+    ):
+        for entry in decision_makers:
+            label = str(entry).strip()
+            if label and label not in intake.decision_process.decision_makers:
+                intake.decision_process.decision_makers.append(label)
     reconcile_intake_coherence(intake)
 
 
 def is_affirmative_reply(content: str) -> bool:
     lowered = content.lower().strip()
-    return lowered.startswith("yes") or lowered in {"sure", "ok", "okay", "yep", "yeah"}
+    return lowered.startswith("yes") or lowered in {
+        "sure",
+        "ok",
+        "okay",
+        "yep",
+        "yeah",
+        "of course",
+        "i agree",
+    }
+
+
+def _looks_like_zip_only_answer(content: str) -> bool:
+    digits = "".join(ch for ch in content if ch.isdigit())
+    stripped = content.strip()
+    if len(digits) != 5:
+        return False
+    return stripped.isdigit() or re.fullmatch(r"\d{5}", stripped) is not None
+
+
+def _looks_like_phone_answer(content: str) -> bool:
+    digits = "".join(ch for ch in content if ch.isdigit())
+    return len(digits) in {10, 11}
+
+
+def _looks_like_urgency_answer(content: str) -> bool:
+    if _looks_like_zip_only_answer(content):
+        return False
+    cleaned = content.strip()
+    if len(cleaned) > 80:
+        return False
+    lowered = cleaned.lower()
+    care_like = re.search(
+        r"\b(bathing|meals?|memory|medication|assisted living|memory care|help with)\b",
+        lowered,
+    )
+    return care_like is None
 
 
 def extract_with_rules(
@@ -133,7 +187,31 @@ def extract_with_rules(
     *,
     skip_consent_fields: bool = False,
 ) -> SafetySignals:
-    _apply_simple_extraction(intake, content, state, skip_consent_fields=skip_consent_fields)
+    return extract_state_owned_rules(
+        intake,
+        content,
+        state,
+        skip_consent_fields=skip_consent_fields,
+    )
+
+
+def extract_state_owned_rules(
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationState,
+    *,
+    skip_consent_fields: bool = False,
+    supplemental_after_llm: bool = False,
+) -> SafetySignals:
+    if supplemental_after_llm:
+        _apply_supplemental_state_rules(intake, content, state)
+    else:
+        _apply_state_owned_extraction(
+            intake,
+            content,
+            state,
+            skip_consent_fields=skip_consent_fields,
+        )
     signals = detect_safety_signals(content)
     _apply_safety_signals(intake, signals)
     reconcile_intake_coherence(intake)
@@ -186,7 +264,250 @@ def _apply_relationship_heuristics(intake: IntakeRecord, content: str) -> None:
             break
 
 
-def _apply_simple_extraction(
+def _apply_budget_from_content(
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationState,
+) -> None:
+    if state not in BUDGET_STATES and not utterance_has_budget_semantics(content):
+        return
+    numbers = [
+        int("".join(ch for ch in token if ch.isdigit()))
+        for token in content.replace(",", "").split()
+        if any(ch.isdigit() for ch in token)
+    ]
+    budget_numbers = [
+        number
+        for number in numbers
+        if 500 <= number <= 50000 and number != intake.care_recipient.age
+    ]
+    postal = intake.location_preferences.postal_code
+    if postal and postal.isdigit():
+        budget_numbers = [number for number in budget_numbers if number != int(postal)]
+    if not budget_numbers:
+        return
+    low, high = min(budget_numbers), max(budget_numbers)
+    if can_apply_patch_field("budget_max", state=state, intake=intake, new_value=high):
+        intake.financial.monthly_budget_max = high
+    if low != high and can_apply_patch_field(
+        "budget_min", state=state, intake=intake, new_value=low
+    ):
+        intake.financial.monthly_budget_min = low
+
+
+def _apply_structured_care_from_text(
+    intake: IntakeRecord,
+    content: str,
+    *,
+    state: ConversationState,
+) -> None:
+    lowered = content.lower()
+    if re.search(r"\bmind is fine\b|\bno dementia\b|\bcognition is good\b", lowered):
+        intake.care_needs.memory_concerns = False
+    elif (
+        re.search(r"\bmemory (?:issue|problem|concern|loss)\b|\bdementia\b", lowered)
+        and "no " not in lowered
+    ):
+        intake.care_needs.memory_concerns = True
+    if re.search(r"\bmobility\b|\bgetting around\b|\bwalk(?:ing)?\b|\bmove around\b", lowered):
+        intake.care_needs.activities_of_daily_living.mobility = True
+    if re.search(r"\bmeals?\b|\bcooking\b|\bfood prep\b", lowered):
+        intake.care_needs.instrumental_needs.meal_preparation = True
+    if re.search(r"\bcleanup\b|\bcleaning\b|\bhousekeeping\b|\bday-to-day\b", lowered):
+        intake.care_needs.instrumental_needs.housekeeping = True
+    if can_apply_patch_field("care_notes", state=state, intake=intake, new_value=content):
+        intake.care_needs.notes = content.strip()
+
+
+def apply_decision_makers_from_message(
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationState,
+) -> None:
+    _apply_decision_makers(intake, content, state)
+
+
+def _apply_decision_makers(intake: IntakeRecord, content: str, state: ConversationState) -> None:
+    if state not in DECISION_PROCESS_STATES:
+        return
+    match = re.search(
+        r"\bmy\s+(brother|sister|mother|father|son|daughter|spouse|wife|husband)\s+([A-Za-z][A-Za-z'-]+)\b",
+        content,
+        re.IGNORECASE,
+    )
+    if not match:
+        return
+    label = f"{match.group(2)} ({match.group(1).lower()})"
+    if (
+        can_apply_patch_field(
+            "decision_makers",
+            state=state,
+            intake=intake,
+            new_value=[label],
+        )
+        and label not in intake.decision_process.decision_makers
+    ):
+        intake.decision_process.decision_makers.append(label)
+
+
+def _extract_caller_name_candidate(content: str) -> str | None:
+    correction = re.search(
+        r"(?:it'?s|name is)\s+([A-Za-z][A-Za-z'.\s-]+?)(?:\.|$)",
+        content,
+        re.IGNORECASE,
+    )
+    if correction:
+        return correction.group(1).strip()
+    if looks_like_person_name(content) and not looks_like_location_phrase(content):
+        return content.strip()
+    return None
+
+
+def _apply_caller_identity(intake: IntakeRecord, content: str, state: ConversationState) -> None:
+    if state not in CALLER_IDENTITY_STATES and state not in NAME_STATES:
+        return
+    for pattern, relationship in _CALLER_RELATIONSHIP_PATTERNS:
+        if pattern.search(content) and can_apply_patch_field(
+            "relationship",
+            state=state,
+            intake=intake,
+            new_value=relationship,
+        ):
+            intake.caller.relationship_to_care_recipient = relationship
+            break
+    digits = "".join(ch for ch in content if ch.isdigit())
+    if (
+        state in CALLER_IDENTITY_STATES
+        and digits
+        and len(digits) in {10, 11}
+        and len(content.strip()) <= 20
+    ):
+        return
+    name_match = re.search(r"\bmy name is ([^.,!\n]+)", content, re.IGNORECASE)
+    if name_match and can_apply_patch_field(
+        "caller_name",
+        state=state,
+        intake=intake,
+        new_value=name_match.group(1),
+        explicit_self_identification=True,
+    ):
+        intake.caller.name = name_match.group(1).strip()
+        return
+    candidate = _extract_caller_name_candidate(content)
+    if not candidate or is_affirmative_reply(content):
+        return
+    if can_apply_patch_field(
+        "caller_name",
+        state=state,
+        intake=intake,
+        new_value=candidate,
+        explicit_self_identification=bool(
+            re.search(r"(?:no,? really|it'?s|name is)", content, re.IGNORECASE)
+        ),
+    ):
+        intake.caller.name = candidate
+
+
+def _apply_short_age_answer(intake: IntakeRecord, content: str, state: ConversationState) -> None:
+    token = content.strip()
+    if not token.isdigit() or not 50 <= int(token) <= 120:
+        return
+    if intake.care_recipient.age is not None:
+        return
+    if can_apply_patch_field(
+        "care_recipient_age",
+        state=state,
+        intake=intake,
+        new_value=int(token),
+    ):
+        intake.care_recipient.age = int(token)
+
+
+def _apply_voluntary_early_facts(
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationState,
+) -> None:
+    if state not in EARLY_INTAKE_STATES:
+        return
+    _apply_relationship_heuristics(intake, content)
+    if intake.care_recipient.age is None:
+        age_patterns = (
+            r"\b(\d{1,3})\s*(?:[- ]year[- ]old|years old)\b",
+            r"\b(?:is|are)\s+(\d{1,3})\b",
+            r"\b(\d{1,3})\s+in\b",
+        )
+        for pattern in age_patterns:
+            age_match = re.search(pattern, content, re.IGNORECASE)
+            if not age_match:
+                continue
+            age = int(age_match.group(1))
+            if not 50 <= age <= 120:
+                continue
+            if can_apply_patch_field(
+                "care_recipient_age",
+                state=state,
+                intake=intake,
+                new_value=age,
+            ):
+                intake.care_recipient.age = age
+                break
+    zip_match = re.search(r"\b(\d{5})\b", content)
+    if zip_match and can_apply_patch_field(
+        "postal_code",
+        state=state,
+        intake=intake,
+        new_value=zip_match.group(1),
+    ):
+        intake.location_preferences.postal_code = zip_match.group(1)
+    if len(content) > 10 and can_apply_patch_field(
+        "care_notes", state=state, intake=intake, new_value=content
+    ):
+        intake.care_needs.notes = content.strip()
+        _apply_structured_care_from_text(intake, content, state=state)
+    _apply_budget_from_content(intake, content, state)
+
+
+def _apply_supplemental_state_rules(
+    intake: IntakeRecord,
+    content: str,
+    state: ConversationState,
+) -> None:
+    if state == ConversationState.COLLECT_LOCATION_REQUIREMENTS:
+        zip_digits = "".join(ch for ch in content if ch.isdigit())
+        if (
+            len(zip_digits) >= 5
+            and not _looks_like_phone_answer(content)
+            and can_apply_patch_field(
+                "postal_code", state=state, intake=intake, new_value=zip_digits[:5]
+            )
+        ):
+            intake.location_preferences.postal_code = zip_digits[:5]
+    elif state == ConversationState.IDENTIFY_CARE_RECIPIENT:
+        token = content.strip()
+        if (
+            token.isdigit()
+            and 50 <= int(token) <= 120
+            and can_apply_patch_field(
+                "care_recipient_age",
+                state=state,
+                intake=intake,
+                new_value=int(token),
+            )
+        ):
+            intake.care_recipient.age = int(token)
+    elif state in CALLER_IDENTITY_STATES:
+        phone_match = re.search(
+            r"(?:\+1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}",
+            content,
+        )
+        if phone_match and can_apply_patch_field(
+            "caller_phone", state=state, intake=intake, new_value=phone_match.group(0)
+        ):
+            intake.caller.phone = phone_match.group(0).strip()
+
+
+def _apply_state_owned_extraction(
     intake: IntakeRecord,
     content: str,
     state: ConversationState,
@@ -202,89 +523,53 @@ def _apply_simple_extraction(
         elif state == ConversationState.CAPTURE_FOLLOWUP_CONSENT:
             intake.consent.consent_to_share_with_matched_providers = True
 
-    _apply_relationship_heuristics(intake, content)
+    _apply_voluntary_early_facts(intake, content, state)
+    _apply_short_age_answer(intake, content, state)
 
-    if "@" in content and not intake.caller.email:
-        intake.caller.email = content.strip()
-
-    phone_match = re.search(
-        r"(?:\+1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}",
-        content,
-    )
-    digits = "".join(ch for ch in content if ch.isdigit())
-    if phone_match and can_apply_patch_field(
-        "caller_phone", state=state, intake=intake, new_value=phone_match.group(0)
-    ):
-        intake.caller.phone = phone_match.group(0).strip()
-    elif (
-        len(digits) in {10, 11}
-        and len(content.strip()) <= 20
-        and can_apply_patch_field("caller_phone", state=state, intake=intake, new_value=content)
-    ):
-        intake.caller.phone = content.strip()
-
-    name_match = re.search(r"\bmy name is ([^.,!\n]+)", content, re.IGNORECASE)
-    if name_match and can_apply_patch_field(
-        "caller_name",
-        state=state,
-        intake=intake,
-        new_value=name_match.group(1),
-        explicit_self_identification=True,
-    ):
-        intake.caller.name = name_match.group(1).strip()
-
-    if (
-        state in NAME_STATES
-        and not intake.caller.name
-        and looks_like_person_name(content)
-        and not looks_like_location_phrase(content)
-        and not is_affirmative_reply(content)
-        and not digits
-        and can_apply_patch_field(
-            "caller_name", state=state, intake=intake, new_value=content.strip()
-        )
-    ):
-        intake.caller.name = content.strip()
-
-    care_sentence = re.search(r"\b(?:she|he|they)[' ]?s[^.!?]+[.!?]?", content, re.IGNORECASE)
-    if care_sentence and can_apply_patch_field(
-        "care_notes", state=state, intake=intake, new_value=care_sentence.group(0)
-    ):
-        intake.care_needs.notes = care_sentence.group(0).strip()
-    elif (
-        state == ConversationState.UNDERSTAND_REASON_FOR_CALL
-        and len(content) > 10
-        and can_apply_patch_field("care_notes", state=state, intake=intake, new_value=content)
-    ):
-        intake.care_needs.notes = content.strip()
-
-    if intake.care_recipient.age is None:
+    if state == ConversationState.IDENTIFY_CARE_RECIPIENT:
         age_match = re.search(
             r"\b(\d{1,3})\s*(?:[- ]year[- ]old|years old)\b",
             content,
             re.IGNORECASE,
         )
-        if age_match:
+        if age_match and can_apply_patch_field(
+            "care_recipient_age",
+            state=state,
+            intake=intake,
+            new_value=int(age_match.group(1)),
+        ):
             intake.care_recipient.age = int(age_match.group(1))
-        else:
-            for token in content.replace(",", "").split():
-                if token.isdigit() and 50 <= int(token) <= 120:
-                    intake.care_recipient.age = int(token)
-                    break
+        if len(content) > 20:
+            _apply_structured_care_from_text(intake, content, state=state)
+            if can_apply_patch_field("care_notes", state=state, intake=intake, new_value=content):
+                intake.care_needs.notes = content.strip()
 
-    if state == ConversationState.ASSESS_URGENCY_AND_SAFETY and can_apply_patch_field(
-        "urgency", state=state, intake=intake, new_value=content
+    if state == ConversationState.ASSESS_CARE_NEEDS:
+        _apply_structured_care_from_text(intake, content, state=state)
+
+    if (
+        state == ConversationState.ASSESS_URGENCY_AND_SAFETY
+        and _looks_like_urgency_answer(content)
+        and can_apply_patch_field("urgency", state=state, intake=intake, new_value=content)
     ):
         intake.timing.urgency = _normalize_urgency_text(content)
 
     if state == ConversationState.COLLECT_LOCATION_REQUIREMENTS:
         zip_digits = "".join(ch for ch in content if ch.isdigit())
-        if len(zip_digits) >= 5 and can_apply_patch_field(
-            "postal_code", state=state, intake=intake, new_value=zip_digits[:5]
+        if (
+            len(zip_digits) >= 5
+            and not _looks_like_phone_answer(content)
+            and can_apply_patch_field(
+                "postal_code",
+                state=state,
+                intake=intake,
+                new_value=zip_digits[:5],
+            )
         ):
             intake.location_preferences.postal_code = zip_digits[:5]
         if (
             not intake.location_preferences.preferred_city
+            and not _looks_like_zip_only_answer(content)
             and looks_like_location_phrase(content)
             and can_apply_patch_field(
                 "preferred_city",
@@ -299,68 +584,28 @@ def _apply_simple_extraction(
             intake.location_preferences.preferred_state = "NY"
 
     if state == ConversationState.COLLECT_FINANCIAL_REQUIREMENTS:
-        numbers = [int(token) for token in content.replace(",", "").split() if token.isdigit()]
-        if numbers and can_apply_patch_field(
-            "budget_max", state=state, intake=intake, new_value=max(numbers)
-        ):
-            intake.financial.monthly_budget_max = max(numbers)
-            if len(numbers) > 1:
-                intake.financial.monthly_budget_min = min(numbers)
+        _apply_budget_from_content(intake, content, state)
 
-    if (
-        content.strip().isdigit()
-        and 500 <= int(content.strip()) <= 50000
-        and can_apply_patch_field(
-            "budget_max", state=state, intake=intake, new_value=int(content.strip())
+    _apply_caller_identity(intake, content, state)
+
+    if state in CALLER_IDENTITY_STATES:
+        phone_match = re.search(
+            r"(?:\+1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}",
+            content,
         )
-    ):
-        intake.financial.monthly_budget_max = int(content.strip())
-
-    if "memory" in lowered:
-        intake.care_needs.memory_concerns = True
-    if (
-        state in CARE_NOTES_STATES
-        and ("bathing" in lowered or "meal" in lowered or "mobility" in lowered)
-        and can_apply_patch_field("care_notes", state=state, intake=intake, new_value=content)
-    ):
-        intake.care_needs.notes = content.strip()
-
-    zip_match = re.search(r"\b(\d{5})\b", content)
-    if (
-        zip_match
-        and not intake.location_preferences.postal_code
-        and can_apply_patch_field(
-            "postal_code",
-            state=state,
-            intake=intake,
-            new_value=zip_match.group(1),
-        )
-    ):
-        intake.location_preferences.postal_code = zip_match.group(1)
-
-    if "budget" in lowered:
-        numbers = [
-            int("".join(ch for ch in token if ch.isdigit()))
-            for token in content.replace(",", "").split()
-            if any(ch.isdigit() for ch in token)
-        ]
-        budget_numbers = [
-            number
-            for number in numbers
-            if 500 <= number <= 50000 and number != intake.care_recipient.age
-        ]
-        postal = intake.location_preferences.postal_code
-        if postal and postal.isdigit():
-            budget_numbers = [number for number in budget_numbers if number != int(postal)]
-        if budget_numbers and can_apply_patch_field(
-            "budget_max", state=state, intake=intake, new_value=max(budget_numbers)
+        digits = "".join(ch for ch in content if ch.isdigit())
+        if phone_match and can_apply_patch_field(
+            "caller_phone", state=state, intake=intake, new_value=phone_match.group(0)
         ):
-            intake.financial.monthly_budget_max = max(budget_numbers)
-            if len(budget_numbers) > 1:
-                intake.financial.monthly_budget_min = min(budget_numbers)
+            intake.caller.phone = phone_match.group(0).strip()
+        elif (
+            len(digits) in {10, 11}
+            and len(content.strip()) <= 20
+            and can_apply_patch_field("caller_phone", state=state, intake=intake, new_value=content)
+        ):
+            intake.caller.phone = content.strip()
 
-    if "within" in lowered and "30" in lowered and not intake.timing.urgency:
-        intake.timing.urgency = "within_30_days"
+    _apply_decision_makers(intake, content, state)
 
 
 def extract_with_ollama(
@@ -398,10 +643,13 @@ def extract_with_ollama(
         state=state,
         skip_consent_fields=skip_consent_fields,
     )
-    signals = detect_safety_signals(content)
-    _apply_safety_signals(intake, signals)
-    reconcile_intake_coherence(intake)
-    return signals
+    return extract_state_owned_rules(
+        intake,
+        content,
+        state,
+        skip_consent_fields=skip_consent_fields,
+        supplemental_after_llm=True,
+    )
 
 
 def _apply_safety_signals(intake: IntakeRecord, signals: SafetySignals) -> None:

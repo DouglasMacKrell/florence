@@ -113,6 +113,16 @@ def advance_state(current: ConversationState, intake: IntakeRecord) -> Conversat
     return current
 
 
+_PAUSE_AFTER_ENTERING: frozenset[ConversationState] = frozenset(
+    {
+        ConversationState.CONFIRM_SUMMARY,
+        ConversationState.MATCH_PROVIDERS,
+        ConversationState.EXPLAIN_RECOMMENDATIONS,
+        ConversationState.CAPTURE_FOLLOWUP_CONSENT,
+    }
+)
+
+
 def advance_through_satisfied_states(
     current: ConversationState,
     intake: IntakeRecord,
@@ -123,4 +133,6 @@ def advance_through_satisfied_states(
         if next_state == state:
             return state
         state = next_state
+        if state in _PAUSE_AFTER_ENTERING:
+            return state
     return state

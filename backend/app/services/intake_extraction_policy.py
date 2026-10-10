@@ -66,6 +66,19 @@ CARE_NOTES_STATES = frozenset(
     }
 )
 
+DECISION_PROCESS_STATES = frozenset({ConversationState.UNDERSTAND_DECISION_PROCESS})
+
+CALLER_IDENTITY_STATES = frozenset({ConversationState.COLLECT_CALLER_CONTACT})
+
+_BUDGET_SEMANTICS = re.compile(
+    r"\b(budget|afford|\$|dollars?|/month|per month|monthly)\b",
+    re.IGNORECASE,
+)
+
+
+def utterance_has_budget_semantics(text: str) -> bool:
+    return bool(_BUDGET_SEMANTICS.search(text))
+
 
 def _is_empty(value: Any) -> bool:
     if value is None:
@@ -149,13 +162,14 @@ def can_apply_patch_field(
     if field_key == "caller_name":
         if _is_empty(new_value):
             return False
-        if explicit_self_identification:
-            return _is_empty(intake.caller.name) or state in NAME_STATES
-        if not _is_empty(intake.caller.name) and state not in NAME_STATES:
+        eligible = state in NAME_STATES or state in CALLER_IDENTITY_STATES
+        if not eligible:
             return False
+        if explicit_self_identification:
+            return True
         if _is_empty(intake.caller.name):
-            return state in NAME_STATES
-        return state in NAME_STATES
+            return True
+        return state in CALLER_IDENTITY_STATES or state in NAME_STATES
 
     if field_key == "caller_phone":
         if _is_empty(new_value):
@@ -191,7 +205,9 @@ def can_apply_patch_field(
             and state != ConversationState.COLLECT_LOCATION_REQUIREMENTS
         ):
             return False
-        return state in LOCATION_STATES
+        return state in LOCATION_STATES or (
+            state in EARLY_INTAKE_STATES and _is_empty(intake.location_preferences.postal_code)
+        )
 
     if field_key == "relationship":
         caller_relationship = intake.caller.relationship_to_care_recipient
@@ -205,15 +221,17 @@ def can_apply_patch_field(
             return False
         return state in EARLY_INTAKE_STATES or _is_empty(recipient_role)
 
-    if field_key in {"care_recipient_age", "care_recipient_name"}:
-        current = (
-            intake.care_recipient.age
-            if field_key == "care_recipient_age"
-            else intake.care_recipient.name
-        )
-        if not _is_empty(current) and state not in EARLY_INTAKE_STATES:
+    if field_key == "care_recipient_age":
+        if intake.care_recipient.age is not None and state not in EARLY_INTAKE_STATES:
             return False
-        return state in EARLY_INTAKE_STATES or _is_empty(current)
+        if state == ConversationState.IDENTIFY_CARE_RECIPIENT:
+            return True
+        return state in EARLY_INTAKE_STATES
+
+    if field_key == "care_recipient_name":
+        if intake.care_recipient.name is not None and state not in EARLY_INTAKE_STATES:
+            return False
+        return state in EARLY_INTAKE_STATES
 
     if field_key == "care_notes":
         if not _is_empty(intake.care_needs.notes) and state not in CARE_NOTES_STATES:
@@ -233,7 +251,10 @@ def can_apply_patch_field(
         )
         if not _is_empty(current) and state not in BUDGET_STATES:
             return False
-        return state in BUDGET_STATES or _is_empty(current)
+        return state in BUDGET_STATES
+
+    if field_key == "decision_makers":
+        return state in DECISION_PROCESS_STATES
 
     return _is_empty(getattr(intake, field_key, None))
 

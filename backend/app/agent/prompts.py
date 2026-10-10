@@ -22,11 +22,13 @@ caller_name, caller_phone, caller_email, relationship, care_recipient_role,
 care_recipient_name, care_recipient_age, care_notes, requested_care_types, urgency,
 postal_code, preferred_city, preferred_state, budget_min, budget_max, payment_sources,
 memory_concerns, overnight_support_needed, consent_to_store, consent_to_contact,
-consent_to_share, private_room_required, language_preferences.
+consent_to_share, private_room_required, language_preferences, decision_makers.
 
 Use null for unknown values. Use booleans for yes/no consent and care flags.
 relationship is the CALLER's relationship to the person needing care (daughter, son, spouse).
 care_recipient_role is who needs care when stated (mother, father, spouse, parent).
+decision_makers is a list of other people involved in the care decision (e.g. "Max (brother)").
+Only populate decision_makers when the caller describes who else is involved in the decision.
 Do not put the caller's name into city or location fields.
 Do not include extra keys.
 """
@@ -48,9 +50,16 @@ Use the fallback_reply as the primary guide for what to say next.
 
 def missing_fields_for_reply(state: str, intake: IntakeRecord) -> list[str]:
     missing = intake.missing_required_fields()
-    if state != ConversationState.COLLECT_CALLER_CONTACT.value:
-        return [field for field in missing if field != "caller.phone"]
-    return missing
+    filtered: list[str] = []
+    for field in missing:
+        if field == "caller.phone" and state != ConversationState.COLLECT_CALLER_CONTACT.value:
+            continue
+        if field == "caller.name" and state not in {
+            ConversationState.COLLECT_CALLER_CONTACT.value,
+        }:
+            continue
+        filtered.append(field)
+    return filtered
 
 
 def state_instruction(state: str, intake: IntakeRecord) -> str:

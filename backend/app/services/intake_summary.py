@@ -107,11 +107,52 @@ def _normalize_care_needs_clause(notes: str) -> str:
     return clause
 
 
+def _structured_care_summary_labels(intake: IntakeRecord) -> list[str]:
+    labels: list[str] = []
+    adl = intake.care_needs.activities_of_daily_living
+    instrumental = intake.care_needs.instrumental_needs
+    if adl.mobility is True:
+        labels.append("mobility")
+    if instrumental.meal_preparation is True:
+        labels.append("meal preparation")
+    if instrumental.housekeeping is True:
+        labels.append("day-to-day household tasks")
+    if adl.bathing is True:
+        labels.append("bathing")
+    if adl.eating is True:
+        labels.append("meals")
+    if intake.care_needs.memory_concerns is True:
+        labels.append("memory support")
+    if intake.care_needs.requested_care_types:
+        for value in intake.care_needs.requested_care_types:
+            phrase = value.replace("_", " ")
+            if phrase not in labels:
+                labels.append(phrase)
+    return labels
+
+
+def _join_care_labels(labels: list[str]) -> str:
+    if not labels:
+        return ""
+    if len(labels) == 1:
+        return labels[0]
+    if len(labels) == 2:
+        return f"{labels[0]} and {labels[1]}"
+    return f"{', '.join(labels[:-1])}, and {labels[-1]}"
+
+
 def _format_care_needs_paragraph(intake: IntakeRecord) -> str | None:
     subject = _subject_pronoun(intake)
+    structured = _structured_care_summary_labels(intake)
+    if structured:
+        return f"{subject} needs help with {_join_care_labels(structured)}."
     notes = (intake.care_needs.notes or "").strip().rstrip(".")
     if notes:
-        if re.match(r"^(she|he|they)\b", notes, re.IGNORECASE):
+        if re.match(r"^(she|he|they|his|her)\b", notes, re.IGNORECASE):
+            if re.match(r"^his\b", notes, re.IGNORECASE):
+                remainder = notes[3:].lstrip(" ,.")
+                tail = remainder[0].lower() + remainder[1:] if remainder else ""
+                return f"{subject} {tail}.".replace("..", ".")
             text = notes[0].upper() + notes[1:]
             if not text.endswith("."):
                 text += "."
@@ -120,23 +161,6 @@ def _format_care_needs_paragraph(intake: IntakeRecord) -> str | None:
         if not clause:
             return None
         return f"{subject} {clause}."
-    if intake.care_needs.requested_care_types:
-        types = [value.replace("_", " ") for value in intake.care_needs.requested_care_types]
-        return f"{subject} needs help with {', '.join(types)}."
-    flags: list[str] = []
-    adl = intake.care_needs.activities_of_daily_living
-    for label, value in (
-        ("bathing", adl.bathing),
-        ("dressing", adl.dressing),
-        ("meals", adl.eating),
-        ("mobility", adl.mobility),
-    ):
-        if value is True:
-            flags.append(label)
-    if intake.care_needs.memory_concerns is True:
-        flags.append("memory support")
-    if flags:
-        return f"{subject} needs help with {', '.join(flags)}."
     return None
 
 

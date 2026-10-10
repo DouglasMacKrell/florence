@@ -55,6 +55,8 @@ _AFFIRMATIVE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"^sure\b",
         r"^ok(?:ay)?\b",
         r"^that[' ]s fine\b",
+        r"^i agree\b",
+        r"^of course\b",
         r"^i consent\b",
         r"^you have my permission\b",
         r"^you may contact me\b",
@@ -243,7 +245,7 @@ def should_gate_follow_up_consent(intake: IntakeRecord, state: ConversationState
         ConversationState.COLLECT_FOLLOWUP_CONSENT,
     }:
         return False
-    return bool(intake.caller.name)
+    return state == ConversationState.COLLECT_CALLER_CONTACT
 
 
 def ensure_consent_gate_state(state: ConversationState, intake: IntakeRecord) -> ConversationState:
